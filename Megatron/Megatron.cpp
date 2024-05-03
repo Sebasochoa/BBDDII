@@ -5,6 +5,7 @@
 #include <string>
 #include <algorithm>
 #include <cctype>
+#include <sstream>
 
 class Megatron
 {
@@ -19,15 +20,19 @@ public:
     void Tablas();
     void Cargar();
     void Select_();
-    void Select_(std::string);
+    void Select_(std::string, std::string, std::string, int);
+    void Select_I();
     std::string Corregir(std::string);
     int Max(std::string, int);
     int *Max(std::string);
-    std::string Llenar(std::string, int);
+    std::string LlenarI(std::string, int);
+    std::string LlenarD(std::string, int);
     std::string Vaciar(std::string, int *, std::string);
-    std::string get_Esquema();
-    int get_NAtributos(std::string);
+    std::string get_Esquema(std::string);
+    int get_NumAtributos(std::string);
+    std::string get_NomAtributos(std::string);
     int Encabezados(std::string, int);
+    bool Entero(const std::string &, const std::string &, const std::string &);
 };
 
 Megatron::Megatron()
@@ -88,7 +93,7 @@ void Megatron::Tablas()
     getline(std::cin, nombreTabla);
     std::string Tabla = "../" + nombreTabla + ".txt";
 
-    int contador = get_NAtributos(nombreTabla);
+    int contador = get_NumAtributos(nombreTabla);
 
     for (int i = 0; i < contador; i++)
     {
@@ -111,9 +116,9 @@ void Megatron::Tablas()
     std::cout << "Registro guardado correctamente." << std::endl;
 }
 
-int Megatron::get_NAtributos(std::string esquema)
+int Megatron::get_NumAtributos(std::string esquema)
 {
-    std::string nombre, linea;
+    std::string linea;
     std::ifstream archivo("../Esquemas.txt");
     size_t pos = 0;
     int contador = 0;
@@ -220,7 +225,7 @@ std::string Megatron::Corregir(std::string linea)
         else if (linea[i] == ',' && !str)
         {
 
-            res += Llenar(segmento, Max(esq, mult));
+            res += LlenarI(segmento, Max(esq, mult));
             segmento.clear();
             mult++;
         }
@@ -229,11 +234,11 @@ std::string Megatron::Corregir(std::string linea)
             segmento += linea[i];
         }
     }
-    res += Llenar(segmento, Max(esq, mult));
+    res += LlenarI(segmento, Max(esq, mult));
     return res;
 }
 
-std::string Megatron::Llenar(std::string linea, int cant)
+std::string Megatron::LlenarI(std::string linea, int cant)
 {
     std::string res;
     size_t resto = cant - linea.length();
@@ -245,11 +250,24 @@ std::string Megatron::Llenar(std::string linea, int cant)
     return res;
 }
 
+std::string Megatron::LlenarD(std::string linea, int cant)
+{
+    std::string res;
+    size_t resto = cant - linea.length();
+    res += linea;
+    for (size_t i = 0; i < resto; i++)
+    {
+        res += " ";
+    }
+
+    return res;
+}
+
 std::string Megatron::Vaciar(std::string linea, int *max, std::string esquema)
 {
     std::string resultado = linea;
     size_t offset = 0;
-    int natri = get_NAtributos(esquema);
+    int natri = get_NumAtributos(esquema);
     for (int i = 0; i < natri; ++i)
     {
         size_t pos = max[i];
@@ -263,29 +281,70 @@ std::string Megatron::Vaciar(std::string linea, int *max, std::string esquema)
     resultado.erase(std::remove_if(resultado.begin(), resultado.end(), [](unsigned char c)
                                    { return std::isspace(c); }),
                     resultado.end());
-    std::string res;
+    std::string res, segmento;
+    int mult = 1, enca = 0, maxi = 0;
+    std::string esq = get_Esquema(esquema);
     for (size_t i = 0; i < resultado.length(); i++)
     {
+
         if (resultado[i] == '#')
         {
-
-            res += ' ';
+            enca = Encabezados(esq, mult);
+            maxi = Max(esq, mult);
+            if (enca < maxi)
+            {
+                res += LlenarD(segmento, maxi + 1);
+            }
+            else
+            {
+                res += LlenarD(segmento, enca + 1);
+            }
+            segmento.clear();
+            mult++;
         }
         else
         {
-            res += resultado[i];
+            segmento += resultado[i];
         }
     }
-
+    enca = Encabezados(esq, mult);
+    maxi = Max(esq, mult);
+    if (enca < maxi)
+    {
+        res += LlenarD(segmento, maxi);
+    }
+    else
+    {
+        res += LlenarD(segmento, enca);
+    }
     return res;
 }
 
-std::string Megatron::get_Esquema()
+std::string Megatron::get_Esquema(std::string tabla)
 {
-    std::string res;
-    std::ifstream esquemas("../Esquemas.txt");
-    std::getline(esquemas, res);
-    return res;
+    std::string linea;
+    std::ifstream archivo("../Esquemas.txt");
+
+    bool encontro = false;
+    if (archivo.is_open())
+    {
+        while (std::getline(archivo, linea))
+        {
+
+            if (linea.find(tabla) != std::string::npos)
+            {
+                encontro = true;
+                break;
+            }
+        }
+        archivo.close();
+
+        if (!encontro)
+        {
+            return 0;
+        }
+    }
+    return linea;
 }
 
 int Megatron::Max(std::string esq, int mult)
@@ -325,46 +384,54 @@ int Megatron::Encabezados(std::string esquema, int mult)
 {
     size_t pos = 0;
     int contador = 2, max = 0;
-    std::string numero_str;
-    bool contar = false;
 
     while ((pos = esquema.find('#', pos)) != std::string::npos)
     {
         ++contador;
-
         if (contador == 3 * mult)
         {
-            for (char caracter : esquema)
+            pos++;
+            while (pos < esquema.length() && esquema[pos] != '#')
             {
-                if (caracter == '#')
-                {
-                    if (contar)
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        contar = true;
-                    }
-                }
-                else if (contar)
-                {
-                    contador++;
-                }
+                max++;
+                pos++;
             }
-            break;
         }
         else
         {
             pos++;
         }
     }
-
-    if (!numero_str.empty())
-    {
-        max = std::stoi(numero_str);
-    }
     return max;
+}
+
+std::string Megatron::get_NomAtributos(std::string tabla)
+{
+
+    size_t pos = 0;
+    int contador = 2;
+    std::string nombres;
+
+    while ((pos = tabla.find('#', pos)) != std::string::npos)
+    {
+        ++contador;
+        if (contador == 3)
+        {
+            pos++;
+            while (pos < tabla.length() && tabla[pos] != '#')
+            {
+                nombres += tabla[pos];
+                pos++;
+            }
+            nombres += ',';
+            contador = 0;
+        }
+        else
+        {
+            pos++;
+        }
+    }
+    return nombres;
 }
 
 int *Megatron::Max(std::string esq)
@@ -389,35 +456,226 @@ int *Megatron::Max(std::string esq)
 
 void Megatron::Select_()
 {
-    std::string nEsquema, linea, esq = get_Esquema();
-    std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
-    getline(std::cin, nEsquema);
-    std::ifstream archivo("../" + nEsquema + ".txt");
-    // std::ofstream select("../Select" + nEsquema + ".txt");
+    std::string nEsquema, linea, segmento;
 
-    while (getline(archivo, linea))
-    {
-        std::cout << Vaciar(linea, Max(esq), nEsquema) << std::endl;
-    }
-    archivo.close();
-    // select.close();
-}
-
-void Megatron::Select_(std::string sign)
-{
-    std::string nEsquema;
+    int mult = 1;
     std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
     getline(std::cin, nEsquema);
     std::ifstream archivo("../" + nEsquema + ".txt");
     std::ofstream select("../Select" + nEsquema + ".txt");
-    std::string linea;
+    std::string nomatributos = get_NomAtributos(get_Esquema(nEsquema)), esq = get_Esquema(nEsquema);
+    for (size_t i = 0; i < nomatributos.length(); i++)
+    {
+        if (nomatributos[i] == ',')
+        {
+            int enca = Encabezados(esq, mult), maxi = Max(esq, mult);
+            if (enca < maxi)
+            {
+                select << LlenarD(segmento, maxi + 1);
+            }
+            else
+            {
+                select << LlenarD(segmento, enca + 1);
+            }
+            segmento.clear();
+            mult++;
+        }
+        else
+        {
+            segmento += nomatributos[i];
+        }
+    }
+    select << std::endl;
+
     while (getline(archivo, linea))
     {
-        select << linea << std::endl;
+        select << Vaciar(linea, Max(esq), nEsquema) << std::endl;
     }
     archivo.close();
     select.close();
-    sign = "#";
+}
+
+void Megatron::Select_(std::string nEsquema, std::string atributo, std::string signo, int valor)
+{
+    std::string nomatributos, token, linea, compara_str;
+    std::ifstream archivo("../" + nEsquema + ".txt");
+    std::ofstream select("../Select" + nEsquema + ".txt");
+    int contador = 0, sumatoria = 0, comparacion = 0;
+    nomatributos = get_NomAtributos(get_Esquema(nEsquema));
+    std::istringstream ss1(nomatributos);
+
+    while (std::getline(ss1, token, ','))
+    {
+        contador++;
+        if (token == atributo)
+        {
+            break;
+        }
+    }
+    int *suma = Max(get_Esquema(nEsquema));
+
+    int longitud = get_NumAtributos(get_Esquema(nEsquema));
+
+    for (int i = 0; i < longitud; i++)
+    {
+        if (i < contador - 1)
+        {
+            sumatoria += suma[i];
+        }
+    }
+    int maxi = Max(get_Esquema(nEsquema), contador);
+
+    while (getline(archivo, linea))
+    {
+        for (int i = 0; i < maxi; i++)
+        {
+            if (linea[sumatoria + i] != ' ')
+            {
+                compara_str += linea[sumatoria + i];
+            }
+        }
+        if (!compara_str.empty())
+        {
+            comparacion = std::stoi(compara_str);
+            compara_str.clear();
+            if (signo == "<")
+            {
+                if (comparacion < valor)
+                {
+                    select << linea << std::endl;
+                }
+            }
+            else if (signo == ">")
+            {
+                if (comparacion > valor)
+                {
+                    select << linea << std::endl;
+                }
+            }
+            else if (signo == "<=")
+            {
+                if (comparacion <= valor)
+                {
+                    select << linea << std::endl;
+                }
+            }
+            else if (signo == ">=")
+            {
+                if (comparacion >= valor)
+                {
+                    select << linea << std::endl;
+                }
+            }
+        }
+    }
+
+    archivo.close();
+    select.close();
+}
+
+bool Megatron::Entero(const std::string &cadena1, const std::string &cadena2, const std::string &palabra)
+{
+    std::istringstream ss1(cadena1);
+    std::istringstream ss2(cadena2);
+    std::string token1, token2;
+
+    while (std::getline(ss1, token1, ','))
+    {
+        if (token1 == palabra)
+        {
+            while (std::getline(ss2, token2, '#'))
+            {
+                if (token2 == palabra)
+                {
+                    if (std::getline(ss2, token2, '#'))
+                    {
+                        return (token2 == "int");
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+void Megatron::Select_I()
+{
+    std::string atributo, signo, nEsquema, esquema, nomatributos, segmento;
+    int valor = 0, j = 0;
+
+    std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
+    getline(std::cin, nEsquema);
+
+    int numatributos = get_NumAtributos(nEsquema);
+    std::string *enteros = new std::string[numatributos];
+
+    esquema = get_Esquema(nEsquema);
+    nomatributos = get_NomAtributos(esquema);
+
+    for (size_t i = 0; i < nomatributos.length(); i++)
+    {
+
+        if (nomatributos[i] == ',')
+        {
+            if (Entero(nomatributos, esquema, segmento))
+            {
+
+                if (j < numatributos)
+                {
+                    enteros[j] = segmento;
+                }
+                j++;
+            }
+            segmento.clear();
+        }
+        else
+        {
+            segmento += nomatributos[i];
+        }
+    }
+    int longitud = sizeof(enteros[0]) / sizeof(enteros), opc = 100000;
+    std::cout << "Ingrese el atributo a seleccionar: \n";
+    for (int i = 0; i < longitud; i++)
+    {
+
+        std::cout << i + 1 << ". " << enteros[i] << std::endl;
+    }
+    while (opc > longitud + 1)
+    {
+        std::cout << "Ingrese una opcion valida: ";
+        std::cin >> opc;
+    }
+    atributo = enteros[opc - 1];
+    opc = 0;
+    while (opc < 1 || opc > 4)
+    {
+        std::cout << "Signo de comparacion: \n1. <\n2. >\n3. <=\n4. >=\nIngrese una opcion valida: ";
+        std::cin >> opc;
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        switch (opc)
+        {
+        case 1:
+            signo = "<";
+            break;
+        case 2:
+            signo = ">";
+            break;
+        case 3:
+            signo = "<=";
+            break;
+        case 4:
+            signo = ">=";
+            break;
+        default:
+            std::cout << "Seleccione una opcion: ";
+            std::cin >> opc;
+            break;
+        }
+    }
+    std::cout << "Ingrese cantidad a comparar: ";
+    std::cin >> valor;
+
+    Select_(nEsquema, atributo, signo, valor);
 }
 
 void Menu()
@@ -428,7 +686,7 @@ void Menu()
 int main()
 {
     Megatron DB;
-    DB.Select_();
+    DB.Select_I();
 
     /*int opc;
     while (opc != 5)
@@ -458,10 +716,6 @@ int main()
             std::cin >> opc;
             break;
         }
-    }*/
-
-    return 0;
-}
     }*/
 
     return 0;
