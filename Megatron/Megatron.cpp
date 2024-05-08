@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cctype>
 #include <sstream>
+#include "Disco.h"
 
 class Megatron
 {
@@ -685,8 +686,9 @@ void Menu()
 
 int main()
 {
-    Megatron DB;
-    DB.Select_I();
+    Disco D("Hola",1,2,3,4);
+    //Megatron DB;
+    // DB.Select_I();
 
     /*int opc;
     while (opc != 5)
