@@ -19,7 +19,7 @@ public:
     bool Existe(const char *);
     void Esquemas();
     void Tablas();
-    void Cargar();
+    void Cargar(int, std::string);
     void Select_();
     void Select_(std::string, std::string, std::string, int);
     void Select_I();
@@ -151,7 +151,28 @@ int Megatron::get_NumAtributos(std::string esquema)
     return contador;
 }
 
-void Megatron::Cargar()
+bool esEntero(const std::string &texto)
+{
+    if (!texto.empty())
+    {
+        std::istringstream ss(texto);
+        int valor;
+        return ss >> valor && ss.eof();
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool esFlotante(const std::string &texto)
+{
+    std::istringstream ss(texto);
+    float valor;
+    return ss >> valor && ss.eof();
+}
+
+void Megatron::Cargar(int capacity, std::string name)
 {
     Tuplas.clear();
     std::string nArchivo, nEsquema;
@@ -166,16 +187,54 @@ void Megatron::Cargar()
 
     Tuplas += nEsquema + "#";
 
-    std::string esq, atributo, tipo, max;
+    std::string esq, atributo, tipe, tipo;
     getline(archivo, esq);
+    getline(archivo, tipe);
+    size_t j = 0;
+    bool comillas = false;
 
     for (size_t i = 0; i <= esq.length() + 1; i++)
     {
         if (esq[i] == ',' || i == esq.length())
         {
-            std::cout << "Tipo de Dato y bytes para " << atributo << ":";
-            std::cin >> tipo >> max;
-            Tuplas += atributo + '#' + tipo + '#' + max + '#';
+            for (; j <= tipe.length(); j++)
+            {
+                if ((tipe[j] == ',' && !comillas) || j == tipe.length())
+                {
+                    if (esEntero(tipo))
+                    {
+                        Tuplas += atributo + "#int#8#";
+                    }
+                    else if (esFlotante(tipo))
+                    {
+                        Tuplas += atributo + "#float#10#";
+                    }
+                    else
+                    {
+                        if (tipo.length() > 20)
+                        {
+                            Tuplas += atributo + "#str#70#";
+                        }
+                        else
+                        {
+                            Tuplas += atributo + "#str#20#";
+                        }
+                        
+                    }
+                    break;
+                }
+                if (tipe[j] == '"')
+                {
+                    comillas = !comillas;
+                }
+
+                if (tipe[j] != ',')
+                {
+                    tipo += tipe[j];
+                }
+            }
+            j++;
+            tipo.clear();
             atributo.clear();
         }
         if (esq[i] != ',')
@@ -183,6 +242,7 @@ void Megatron::Cargar()
             atributo += esq[i];
         }
     }
+
     std::ofstream Esquem("../Esquemas.txt", std::ios::app);
     Esquem << Tuplas << std::endl;
     Esquem.close();
@@ -190,8 +250,8 @@ void Megatron::Cargar()
     std::ofstream txt("../" + nEsquema + ".txt");
     if (archivo.is_open())
     {
-        std::string linea;
-
+        std::string linea = tipe;
+        txt << Corregir(linea) << std::endl;
         while (getline(archivo, linea))
         {
             txt << Corregir(linea) << std::endl;
@@ -225,7 +285,6 @@ std::string Megatron::Corregir(std::string linea)
         }
         else if (linea[i] == ',' && !str)
         {
-
             res += LlenarI(segmento, Max(esq, mult));
             segmento.clear();
             mult++;
@@ -686,9 +745,11 @@ void Menu()
 
 int main()
 {
-    Disco D("Hola",1,2,3,4);
+    Disco D("Hola1");
+    D.FullCapacity();
+    // g++ -o main Megatron.cpp Disco.cpp
     //Megatron DB;
-    // DB.Select_I();
+    //DB.Cargar();
 
     /*int opc;
     while (opc != 5)
