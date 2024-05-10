@@ -8,6 +8,14 @@ namespace fs = std::filesystem;
 
 Disco::Disco(const std::string &NDisco)
 {
+    Name = NDisco;
+    Plates = 4;
+    Surfaces = 2;
+    Tracks = 3;
+    Section = 4;
+    Blocks = 10;
+    CapSection = 1000;
+    
     std::string directorio = fs::current_path().string();
     std::string dirNDisco = directorio + "/" + NDisco;
 
@@ -40,7 +48,7 @@ Disco::Disco(const std::string &NDisco)
     }
 }
 
-Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks, int NSections, int NBlocks)
+Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks, int NSections, int NBlocks, int Capacity)
 {
     Name = NDisco;
     Plates = NPlates;
@@ -48,6 +56,7 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
     Tracks = NTracks;
     Section = NSections;
     Blocks = NBlocks;
+    CapSection = Capacity;
 
     std::string directorio = fs::current_path().string();
     std::string dirNDisco = directorio + "/" + NDisco;
@@ -77,6 +86,10 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
 
                     fs::create_directory(dirSector);
                     std::ofstream archivo(nomArchivo);
+                    if (archivo.is_open())
+                    {
+                        archivo << CapSection << std::endl;
+                    }
                 }
             }
         }
@@ -127,6 +140,7 @@ std::vector<std::string> encontrarDirectoriosConTXT(const std::string &directori
 
     return directorios;
 }
+
 int contarLineasLlenas(const std::string &nombreArchivo)
 {
     std::ifstream archivo(nombreArchivo);
@@ -140,7 +154,6 @@ int contarLineasLlenas(const std::string &nombreArchivo)
     std::string linea;
     while (std::getline(archivo, linea))
     {
-        // Si la línea no está vacía, incrementa el contador
         if (!linea.empty())
         {
             contador++;
@@ -151,12 +164,11 @@ int contarLineasLlenas(const std::string &nombreArchivo)
     return contador;
 }
 
-// Función para recorrer las carpetas y contar las líneas llenas en los archivos de texto
-int contarLineasLlenasEnDirectorios()
+int contarLineasLlenasEnDirectorios(std::string NDisco)
 {
     int totalLineas = 0;
 
-    std::vector<std::string> directorios = encontrarDirectoriosConTXT(fs::current_path().string() + "\\Hola1");
+    std::vector<std::string> directorios = encontrarDirectoriosConTXT(fs::current_path().string() + "\\" + NDisco);
 
     for (const auto &directorio : directorios)
     {
@@ -173,9 +185,9 @@ int contarLineasLlenasEnDirectorios()
     return totalLineas;
 }
 
-int Disco::FullCapacity()
+int Disco::FullCapacity(std::string NDisco)
 {
-    int s = contarLineasLlenasEnDirectorios();
+    int s = contarLineasLlenasEnDirectorios(NDisco);
     return s * CapSection;
 }
 

@@ -14,9 +14,9 @@ private:
 
 public:
     Disco(const std::string&);
-    Disco(const std::string&, int, int, int, int, int);
+    Disco(const std::string&, int, int, int, int, int, int);
     int MaxCapacity();
-    int FullCapacity();
+    int FullCapacity(std::string);
     int GetSectorCapacity();
 };
 #endif
