@@ -10,6 +10,7 @@
 #include "Megatron.h"
 #include <vector>
 #include <filesystem>
+#include <array>
 
 namespace fs = std::filesystem;
 
@@ -65,7 +66,7 @@ int Megatron::get_NumAtributos(std::string esquema)
     return contador;
 }
 
-bool esEntero(const std::string &texto)
+bool Megatron::Int(std::string texto)
 {
     if (!texto.empty())
     {
@@ -79,53 +80,54 @@ bool esEntero(const std::string &texto)
     }
 }
 
-bool esFlotante(const std::string &texto)
+bool Megatron::Float(std::string texto)
 {
     std::istringstream ss(texto);
     float valor;
     return ss >> valor && ss.eof();
 }
 
-std::vector<int> Info_Disco(std::string NDisco)
+int *Megatron::Info_Disk(std::string Name_Disk)
 {
-    std::vector<int> directorios;
-    std::string directorioPadre = fs::current_path().string() + "\\" + NDisco;
-    int NPlates = 0, NSuperficies = 0, NPistas = 0, NSectores = 0;
-    for (const auto &plato : fs::directory_iterator(directorioPadre))
+    std::string Directory_Disk = fs::current_path().string() + "/" + Name_Disk;
+
+    int Num_Plates = 0, Num_Surfaces = 0, Num_Tracks = 0, Num_Sectors = 0;
+
+    for (const auto &Plate : fs::directory_iterator(Directory_Disk))
     {
-        if (plato.is_directory())
+        if (Plate.is_directory())
         {
-            NPlates++;
+            Num_Plates++;
         }
     }
 
-    for (const auto &plato : fs::directory_iterator(directorioPadre))
+    for (const auto &Plate : fs::directory_iterator(Directory_Disk))
     {
-        if (plato.is_directory())
+        if (Plate.is_directory())
         {
-            for (const auto &superficie : fs::directory_iterator(plato.path()))
+            for (const auto &Surfaces : fs::directory_iterator(Plate.path()))
             {
-                if (superficie.is_directory())
+                if (Surfaces.is_directory())
                 {
-                    NSuperficies++;
+                    Num_Surfaces++;
                 }
             }
         }
     }
 
-    for (const auto &plato : fs::directory_iterator(directorioPadre))
+    for (const auto &Plate : fs::directory_iterator(Directory_Disk))
     {
-        if (plato.is_directory())
+        if (Plate.is_directory())
         {
-            for (const auto &superficie : fs::directory_iterator(plato.path()))
+            for (const auto &Surfaces : fs::directory_iterator(Plate.path()))
             {
-                if (superficie.is_directory())
+                if (Surfaces.is_directory())
                 {
-                    for (const auto &pista : fs::directory_iterator(superficie.path()))
+                    for (const auto &Tracks : fs::directory_iterator(Surfaces.path()))
                     {
-                        if (pista.is_directory())
+                        if (Tracks.is_directory())
                         {
-                            NPistas++;
+                            Num_Tracks++;
                         }
                     }
                 }
@@ -133,23 +135,23 @@ std::vector<int> Info_Disco(std::string NDisco)
         }
     }
 
-    for (const auto &plato : fs::directory_iterator(directorioPadre))
+    for (const auto &Plate : fs::directory_iterator(Directory_Disk))
     {
-        if (plato.is_directory())
+        if (Plate.is_directory())
         {
-            for (const auto &superficie : fs::directory_iterator(plato.path()))
+            for (const auto &Surfaces : fs::directory_iterator(Plate.path()))
             {
-                if (superficie.is_directory())
+                if (Surfaces.is_directory())
                 {
-                    for (const auto &pista : fs::directory_iterator(superficie.path()))
+                    for (const auto &Tracks : fs::directory_iterator(Surfaces.path()))
                     {
-                        if (pista.is_directory())
+                        if (Tracks.is_directory())
                         {
-                            for (const auto &sector : fs::directory_iterator(pista.path()))
+                            for (const auto &Sectors : fs::directory_iterator(Tracks.path()))
                             {
-                                if (sector.is_directory())
+                                if (Sectors.is_directory())
                                 {
-                                    NSectores++;
+                                    Num_Sectors++;
                                 }
                             }
                         }
@@ -158,14 +160,19 @@ std::vector<int> Info_Disco(std::string NDisco)
             }
         }
     }
-    NSectores /= NPistas;
-    NPistas /= NSuperficies;
-    NSuperficies /= NPlates;
-    directorios.push_back(NPlates);
-    directorios.push_back(NSuperficies);
-    directorios.push_back(NPistas);
-    directorios.push_back(NSectores);
-    return directorios;
+
+    int *Directory = new int[4];
+
+    Num_Sectors /= Num_Tracks;
+    Num_Tracks /= Num_Surfaces;
+    Num_Surfaces /= Num_Plates;
+
+    Directory[0] = Num_Plates;
+    Directory[1] = Num_Surfaces;
+    Directory[2] = Num_Tracks;
+    Directory[3] = Num_Sectors;
+
+    return Directory;
 }
 
 int RemainCapacity(std::string Archivo)
@@ -190,48 +197,25 @@ int RemainCapacity(std::string Archivo)
     return valor;
 }
 
-void modificarPrimeraLinea(const std::string &nombreArchivo, const std::string &nuevaPrimeraLinea)
+void Megatron::First_Line(std::string Directory_File, std::string Replace_Line)
 {
-    // Abrir el archivo en modo de lectura y escritura
-    std::ifstream archivoEntrada(nombreArchivo);
-    if (!archivoEntrada.is_open())
-    {
-        std::cerr << "No se pudo abrir el archivo " << nombreArchivo << std::endl;
-        return;
-    }
+    std::ifstream Source_File(Directory_File);
 
-    // Leer el contenido del archivo línea por línea
-    std::string contenido;
-    std::string linea;
-    while (std::getline(archivoEntrada, linea))
+    std::string Content, Source_File_Line;
+    while (std::getline(Source_File, Source_File_Line))
     {
-        contenido += linea + "\n"; // Agregar cada línea al contenido
+        Content += Source_File_Line + "\n";
     }
-    archivoEntrada.close(); // Cerrar el archivo
+    Source_File.close();
 
-    // Modificar la primera línea en el contenido
-    size_t posFinPrimeraLinea = contenido.find('\n'); // Encontrar el primer salto de línea
-    if (posFinPrimeraLinea != std::string::npos)
-    {
-        contenido.replace(0, posFinPrimeraLinea, nuevaPrimeraLinea); // Reemplazar la primera línea
-    }
-    else
-    {
-        std::cerr << "El archivo está vacío o no tiene saltos de línea." << std::endl;
-        return;
-    }
+    size_t Start_Position = Content.find('\n');
 
-    // Abrir el archivo en modo de escritura (esto sobrescribirá el archivo existente)
-    std::ofstream archivoSalida(nombreArchivo);
-    if (!archivoSalida.is_open())
-    {
-        std::cerr << "No se pudo abrir el archivo " << nombreArchivo << " para escritura." << std::endl;
-        return;
-    }
+    Content.replace(0, Start_Position, Replace_Line);
 
-    // Escribir el contenido modificado en el archivo
-    archivoSalida << contenido;
-    archivoSalida.close(); // Cerrar el archivo
+    std::ofstream Output_File(Directory_File);
+
+    Output_File << Content;
+    Output_File.close();
 }
 
 int NumRegistros(std::string DirArchivo)
@@ -246,152 +230,155 @@ int NumRegistros(std::string DirArchivo)
     return Num - 1;
 }
 
-void Megatron::Cargar(std::string NDisco)
+bool Megatron::Check_Schemes(std::string Name_Scheme)
 {
-    Tuplas.clear();
-    std::string nArchivo, nEsquema, ComEsquema, Segmento;
-    bool ExisEsquema = false;
-    std::cout << "Ingrese el nombre del archivo a cargar: ";
-    getline(std::cin, nArchivo);
+    std::ifstream File_Schemes(fs::current_path().string() + "/Esquemas.txt");
 
-    std::string arch = fs::current_path().string() + "/" + nArchivo + ".csv";
-    std::ifstream archivo(arch);
+    std::string Line_Scheme;
 
-    std::cout << "Ingrese nombre a su Esquema: ";
-    getline(std::cin, nEsquema);
-
-    std::ifstream Comprobar(fs::current_path().string() + "/Esquemas.txt");
-
-    while (getline(Comprobar, ComEsquema))
+    while (getline(File_Schemes, Line_Scheme))
     {
-        std::string Segmento;
-        std::istringstream ss(ComEsquema);
+        std::string Segment;
+        std::istringstream ss(Line_Scheme);
 
-        while (getline(ss, Segmento, '#'))
+        while (getline(ss, Segment, '#'))
         {
-            if (Segmento == nEsquema)
+            if (Segment == Name_Scheme)
             {
-                ExisEsquema = true;
-                break;
+                return true;
             }
         }
-
-        if (ExisEsquema)
-        {
-            break;
-        }
     }
+    return false;
+}
 
-    if (!ExisEsquema)
+void Megatron::Create_Scheme(std::string Name_Scheme)
+{
+    std::string Scheme = Name_Scheme + "#";
+
+    std::string Name_Attribute_Line, Name_Attribute, Record_Line, Record;
+
+    std::ifstream Upload_File(fs::current_path().string() + "/" + Name_Scheme + ".csv");
+
+    getline(Upload_File, Name_Attribute_Line);
+    getline(Upload_File, Record_Line);
+    Upload_File.close();
+    size_t j = 0;
+
+    for (size_t i = 0; i <= Name_Attribute_Line.length() + 1; i++)
     {
-        Tuplas += nEsquema + "#";
-
-        std::string esq, atributo, tipe, tipo;
-
-        getline(archivo, esq);
-        getline(archivo, tipe);
-        archivo.close();
-        size_t j = 0;
-        bool comillas = false;
-
-        for (size_t i = 0; i <= esq.length() + 1; i++)
+        if (Name_Attribute_Line[i] == ',' || i == Name_Attribute_Line.length())
         {
-            if (esq[i] == ',' || i == esq.length())
+            for (; j <= Record_Line.length(); j++)
             {
-                for (; j <= tipe.length(); j++)
+                if (Record_Line[j] == ',' || j == Record_Line.length())
                 {
-                    if ((tipe[j] == ',' && !comillas) || j == tipe.length())
+                    if (Int(Record))
                     {
-                        if (esEntero(tipo))
+                        Scheme += Name_Attribute + "#int#8#";
+                    }
+                    else if (Float(Record))
+                    {
+                        Scheme += Name_Attribute + "#float#10#";
+                    }
+                    else
+                    {
+                        if (Record.length() > 20)
                         {
-                            Tuplas += atributo + "#int#8#";
-                        }
-                        else if (esFlotante(tipo))
-                        {
-                            Tuplas += atributo + "#float#10#";
+                            Scheme += Name_Attribute + "#str#70#";
                         }
                         else
                         {
-                            if (tipo.length() > 20)
-                            {
-                                Tuplas += atributo + "#str#70#";
-                            }
-                            else
-                            {
-                                Tuplas += atributo + "#str#20#";
-                            }
+                            Scheme += Name_Attribute + "#str#20#";
                         }
-                        break;
                     }
-                    if (tipe[j] == '"')
-                    {
-                        comillas = !comillas;
-                    }
-
-                    if (tipe[j] != ',')
-                    {
-                        tipo += tipe[j];
-                    }
+                    break;
                 }
-                j++;
-                tipo.clear();
-                atributo.clear();
-            }
-            if (esq[i] != ',')
-            {
-                atributo += esq[i];
-            }
-        }
 
-        std::ofstream Esquem(fs::current_path().string() + "/Esquemas.txt", std::ios::app);
-        Esquem << Tuplas << std::endl;
-        Esquem.close();
+                if (Record_Line[j] != ',')
+                {
+                    Record += Record_Line[j];
+                }
+            }
+            j++;
+            Record.clear();
+            Name_Attribute.clear();
+        }
+        if (Name_Attribute_Line[i] != ',')
+        {
+            Name_Attribute += Name_Attribute_Line[i];
+        }
     }
-    std::string esq;
-    std::vector<int> Info = Info_Disco(NDisco);
-    std::string directorio = fs::current_path().string();
-    std::string dirNDisco = directorio + "/" + NDisco;
-    std::ifstream Cargar(arch);
-    getline(Cargar, esq);
-    std::string linea;
-    int num = NumRegistros(arch), contador = 0;
-    bool conti = true;
+
+    std::ofstream Scheme_File(fs::current_path().string() + "/Esquemas.txt", std::ios::app);
+    Scheme_File << Scheme << std::endl;
+    Scheme_File.close();
+}
+
+void Megatron::Cargar(std::string Name_Disk)
+{
+    std::string Upload_File_Name, Name_Scheme;
+
+    std::cout << "Ingrese el nombre del archivo a cargar: ";
+    getline(std::cin, Upload_File_Name);
+
+    std::ifstream archivo(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
+
+    std::cout << "Ingrese nombre a su Relacion: ";
+    getline(std::cin, Name_Scheme);
+
+    if (!Check_Schemes(Name_Scheme))
+    {
+        Create_Scheme(Name_Scheme);
+    }
+
+    std::string Upload_File_Line, Trash;
+
+    int *Info = Info_Disk(Name_Disk);
+
+    std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
+    getline(Upload_File, Trash);
+
+    int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv"), contador = 0;
+
     bool continuarIteraciones = true;
 
     for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
     {
-        std::string dirPlato = dirNDisco + "/Plato_" + std::to_string(i);
+        std::string Directory_Plate = fs::current_path().string() + "/" + Name_Disk + "/Plato_" + std::to_string(i);
 
         for (int j = 1; j <= Info[1] && continuarIteraciones; ++j)
         {
-            std::string dirSuperficie = dirPlato + "/Superficie_" + std::to_string(j);
+            std::string Directory_Surface = Directory_Plate + "/Superficie_" + std::to_string(j);
 
             for (int k = 1; k <= Info[2] && continuarIteraciones; ++k)
             {
-                std::string dirPista = dirSuperficie + "/Pista_" + std::to_string(k);
+
+                std::string Directory_Track = Directory_Surface + "/Pista_" + std::to_string(k);
 
                 for (int l = 1; l <= Info[3] && continuarIteraciones; l++)
                 {
-                    std::string dirSector = dirPista + "/Sector_" + std::to_string(l);
-                    std::string nomArchivo = dirSector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-                    std::ofstream txt(nomArchivo, std::ios::app);
-                    if (Cargar.is_open())
+                    std::string Directory_Sector = Directory_Track + "/Sector_" + std::to_string(l);
+
+                    std::string Directory_File = Directory_Sector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
+
+                    std::ofstream txt(Directory_File, std::ios::app);
+                    if (Upload_File.is_open())
                     {
-                        if (!linea.empty())
+
+                        while (getline(Upload_File, Upload_File_Line))
                         {
-                            txt << Corregir(linea, nEsquema, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
-                            contador++;
-                        }
-                        while (getline(Cargar, linea))
-                        {
-                            int longitud = static_cast<int>(linea.length());
-                            int Vacio = RemainCapacity(nomArchivo);
+
+                            int longitud = static_cast<int>(Upload_File_Line.length());
+
+                            int Vacio = RemainCapacity(Directory_File);
+
                             if (Vacio > longitud)
                             {
-                                txt << Corregir(linea, nEsquema, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
-
-                                modificarPrimeraLinea(nomArchivo, std::to_string(Vacio - longitud));
                                 contador++;
+                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+
+                                First_Line(Directory_File, std::to_string(Vacio - longitud));
                             }
                             else
                             {
@@ -408,154 +395,73 @@ void Megatron::Cargar(std::string NDisco)
         }
     }
 
-    Cargar.close();
+    Upload_File.close();
 }
 
-void Megatron::Cargar1(std::string NDisco)
+void Megatron::Cargar1(std::string Name_Disk)
 {
-    Tuplas.clear();
-    std::string nArchivo, nEsquema, ComEsquema, Segmento;
-    bool ExisEsquema = false;
+    std::string Upload_File_Name, Name_Scheme;
+
     std::cout << "Ingrese el nombre del archivo a cargar: ";
-    getline(std::cin, nArchivo);
+    getline(std::cin, Upload_File_Name);
 
-    std::string arch = fs::current_path().string() + "/" + nArchivo + ".csv";
-    std::ifstream archivo(arch);
+    std::ifstream archivo(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
 
-    std::cout << "Ingrese nombre a su Esquema: ";
-    getline(std::cin, nEsquema);
+    std::cout << "Ingrese nombre a su Relacion: ";
+    getline(std::cin, Name_Scheme);
 
-    std::ifstream Comprobar(fs::current_path().string() + "/Esquemas.txt");
-
-    while (getline(Comprobar, ComEsquema))
+    if (!Check_Schemes(Name_Scheme))
     {
-        std::string Segmento;
-        std::istringstream ss(ComEsquema);
-
-        while (getline(ss, Segmento, '#'))
-        {
-            if (Segmento == nEsquema)
-            {
-                ExisEsquema = true;
-                break;
-            }
-        }
-
-        if (ExisEsquema)
-        {
-            break;
-        }
+        Create_Scheme(Name_Scheme);
     }
 
-    if (!ExisEsquema)
-    {
-        Tuplas += nEsquema + "#";
+    std::string Upload_File_Line, Trash;
 
-        std::string esq, atributo, tipe, tipo;
+    int *Info = Info_Disk(Name_Disk);
 
-        getline(archivo, esq);
-        getline(archivo, tipe);
-        archivo.close();
-        size_t j = 0;
-        bool comillas = false;
+    std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
+    getline(Upload_File, Trash);
 
-        for (size_t i = 0; i <= esq.length() + 1; i++)
-        {
-            if (esq[i] == ',' || i == esq.length())
-            {
-                for (; j <= tipe.length(); j++)
-                {
-                    if ((tipe[j] == ',' && !comillas) || j == tipe.length())
-                    {
-                        if (esEntero(tipo))
-                        {
-                            Tuplas += atributo + "#int#8#";
-                        }
-                        else if (esFlotante(tipo))
-                        {
-                            Tuplas += atributo + "#float#10#";
-                        }
-                        else
-                        {
-                            if (tipo.length() > 20)
-                            {
-                                Tuplas += atributo + "#str#70#";
-                            }
-                            else
-                            {
-                                Tuplas += atributo + "#str#20#";
-                            }
-                        }
-                        break;
-                    }
-                    if (tipe[j] == '"')
-                    {
-                        comillas = !comillas;
-                    }
-
-                    if (tipe[j] != ',')
-                    {
-                        tipo += tipe[j];
-                    }
-                }
-                j++;
-                tipo.clear();
-                atributo.clear();
-            }
-            if (esq[i] != ',')
-            {
-                atributo += esq[i];
-            }
-        }
-
-        std::ofstream Esquem(fs::current_path().string() + "/Esquemas.txt", std::ios::app);
-        Esquem << Tuplas << std::endl;
-        Esquem.close();
-    }
-    std::string esq;
-    std::vector<int> Info = Info_Disco(NDisco);
-    std::string directorio = fs::current_path().string();
-    std::string dirNDisco = directorio + "/" + NDisco;
-    std::ifstream Cargar(arch);
-    getline(Cargar, esq);
-    std::string linea;
     int num = 1, contador = 0;
-    bool conti = true;
+
     bool continuarIteraciones = true;
 
     for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
     {
-        std::string dirPlato = dirNDisco + "/Plato_" + std::to_string(i);
+        std::string Directory_Plate = fs::current_path().string() + "/" + Name_Disk + "/Plato_" + std::to_string(i);
 
         for (int j = 1; j <= Info[1] && continuarIteraciones; ++j)
         {
-            std::string dirSuperficie = dirPlato + "/Superficie_" + std::to_string(j);
+            std::string Directory_Surface = Directory_Plate + "/Superficie_" + std::to_string(j);
 
             for (int k = 1; k <= Info[2] && continuarIteraciones; ++k)
             {
-                std::string dirPista = dirSuperficie + "/Pista_" + std::to_string(k);
+
+                std::string Directory_Track = Directory_Surface + "/Pista_" + std::to_string(k);
 
                 for (int l = 1; l <= Info[3] && continuarIteraciones; l++)
                 {
-                    std::string dirSector = dirPista + "/Sector_" + std::to_string(l);
-                    std::string nomArchivo = dirSector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-                    std::ofstream txt(nomArchivo, std::ios::app);
-                    if (Cargar.is_open())
-                    {
-                        if (!linea.empty())
-                        {
-                            txt << Corregir(linea, nEsquema, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
-                            contador++;
-                        }
-                        while (getline(Cargar, linea))
-                        {
-                            int longitud = static_cast<int>(linea.length());
-                            int Vacio = RemainCapacity(nomArchivo);
-                            if (Vacio > longitud)
-                            {
-                                txt << Corregir(linea, nEsquema, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+                    std::string Directory_Sector = Directory_Track + "/Sector_" + std::to_string(l);
 
-                                modificarPrimeraLinea(nomArchivo, std::to_string(Vacio - longitud));
+                    std::string Directory_File = Directory_Sector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
+
+                    std::ofstream txt(Directory_File, std::ios::app);
+                    if (Upload_File.is_open())
+                    {
+
+                        while (getline(Upload_File, Upload_File_Line))
+                        {
+
+                            int longitud = static_cast<int>(Upload_File_Line.length());
+
+                            int Vacio = RemainCapacity(Directory_File);
+
+                            if (Vacio > longitud && contador != num)
+                            {
+
+                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+
+                                First_Line(Directory_File, std::to_string(Vacio - longitud));
                                 contador++;
                             }
                             else
@@ -563,188 +469,98 @@ void Megatron::Cargar1(std::string NDisco)
                                 break;
                             }
                         }
-                        if (contador == num)
-                        {
-                            continuarIteraciones = false;
-                        }
                     }
                 }
             }
         }
     }
 
-    Cargar.close();
+    Upload_File.close();
 }
 
-void Megatron::Cargarn(std::string NDisco)
+void Megatron::Cargarn(std::string Name_Disk)
 {
-    Tuplas.clear();
-    std::string nArchivo, nEsquema, ComEsquema, Segmento;
-    bool ExisEsquema = false;
+    std::string Upload_File_Name, Name_Scheme;
     int num = 0;
     std::cout << "Ingrese el nombre del archivo a cargar: ";
-    getline(std::cin, nArchivo);
+    getline(std::cin, Upload_File_Name);
 
-    std::string arch = fs::current_path().string() + "/" + nArchivo + ".csv";
+    std::string arch = fs::current_path().string() + "/" + Upload_File_Name + ".csv";
     std::ifstream archivo(arch);
 
     std::cout << "Ingrese nombre a su Esquema: ";
-    getline(std::cin, nEsquema);
+    getline(std::cin, Name_Scheme);
     std::cout << "Ingrese la cantidad de registros a cargar: ";
     std::cin >> num;
 
-    std::ifstream Comprobar(fs::current_path().string() + "/Esquemas.txt");
-
-    while (getline(Comprobar, ComEsquema))
+    if (!Check_Schemes(Name_Scheme))
     {
-        std::string Segmento;
-        std::istringstream ss(ComEsquema);
-
-        while (getline(ss, Segmento, '#'))
-        {
-            if (Segmento == nEsquema)
-            {
-                ExisEsquema = true;
-                break;
-            }
-        }
-
-        if (ExisEsquema)
-        {
-            break;
-        }
+        Create_Scheme(Name_Scheme);
     }
 
-    if (!ExisEsquema)
-    {
-        Tuplas += nEsquema + "#";
+    std::string Upload_File_Line, Trash;
 
-        std::string esq, atributo, tipe, tipo;
+    int *Info = Info_Disk(Name_Disk);
 
-        getline(archivo, esq);
-        getline(archivo, tipe);
-        archivo.close();
-        size_t j = 0;
-        bool comillas = false;
+    std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
+    getline(Upload_File, Trash);
 
-        for (size_t i = 0; i <= esq.length() + 1; i++)
-        {
-            if (esq[i] == ',' || i == esq.length())
-            {
-                for (; j <= tipe.length(); j++)
-                {
-                    if ((tipe[j] == ',' && !comillas) || j == tipe.length())
-                    {
-                        if (esEntero(tipo))
-                        {
-                            Tuplas += atributo + "#int#8#";
-                        }
-                        else if (esFlotante(tipo))
-                        {
-                            Tuplas += atributo + "#float#10#";
-                        }
-                        else
-                        {
-                            if (tipo.length() > 20)
-                            {
-                                Tuplas += atributo + "#str#70#";
-                            }
-                            else
-                            {
-                                Tuplas += atributo + "#str#20#";
-                            }
-                        }
-                        break;
-                    }
-                    if (tipe[j] == '"')
-                    {
-                        comillas = !comillas;
-                    }
-
-                    if (tipe[j] != ',')
-                    {
-                        tipo += tipe[j];
-                    }
-                }
-                j++;
-                tipo.clear();
-                atributo.clear();
-            }
-            if (esq[i] != ',')
-            {
-                atributo += esq[i];
-            }
-        }
-
-        std::ofstream Esquem(fs::current_path().string() + "/Esquemas.txt", std::ios::app);
-        Esquem << Tuplas << std::endl;
-        Esquem.close();
-    }
-    std::string esq;
-    std::vector<int> Info = Info_Disco(NDisco);
-    std::string directorio = fs::current_path().string();
-    std::string dirNDisco = directorio + "/" + NDisco;
-    std::ifstream Cargar(arch);
-    getline(Cargar, esq);
-    std::string linea;
     int contador = 0;
-    bool conti = true;
+
     bool continuarIteraciones = true;
 
     for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
     {
-        std::string dirPlato = dirNDisco + "/Plato_" + std::to_string(i);
+        std::string Directory_Plate = fs::current_path().string() + "/" + Name_Disk + "/Plato_" + std::to_string(i);
 
         for (int j = 1; j <= Info[1] && continuarIteraciones; ++j)
         {
-            std::string dirSuperficie = dirPlato + "/Superficie_" + std::to_string(j);
+            std::string Directory_Surface = Directory_Plate + "/Superficie_" + std::to_string(j);
 
             for (int k = 1; k <= Info[2] && continuarIteraciones; ++k)
             {
-                std::string dirPista = dirSuperficie + "/Pista_" + std::to_string(k);
+
+                std::string Directory_Track = Directory_Surface + "/Pista_" + std::to_string(k);
 
                 for (int l = 1; l <= Info[3] && continuarIteraciones; l++)
                 {
-                    std::string dirSector = dirPista + "/Sector_" + std::to_string(l);
-                    std::string nomArchivo = dirSector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-                    std::ofstream txt(nomArchivo, std::ios::app);
-                    if (Cargar.is_open())
-                    {
-                        if (!linea.empty())
-                        {
-                            txt << Corregir(linea, nEsquema, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
-                            contador++;
-                        }
-                        while (getline(Cargar, linea))
-                        {
-                            int longitud = static_cast<int>(linea.length());
-                            int Vacio = RemainCapacity(nomArchivo);
-                            if (Vacio > longitud)
-                            {
-                                txt << Corregir(linea, nEsquema, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+                    std::string Directory_Sector = Directory_Track + "/Sector_" + std::to_string(l);
 
-                                modificarPrimeraLinea(nomArchivo, std::to_string(Vacio - longitud));
+                    std::string Directory_File = Directory_Sector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
+
+                    std::ofstream txt(Directory_File, std::ios::app);
+                    if (Upload_File.is_open())
+                    {
+
+                        while (getline(Upload_File, Upload_File_Line))
+                        {
+
+                            int longitud = static_cast<int>(Upload_File_Line.length());
+
+                            int Vacio = RemainCapacity(Directory_File);
+
+                            if (Vacio > longitud && contador == num)
+                            {
                                 contador++;
+                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+
+                                First_Line(Directory_File, std::to_string(Vacio - longitud));
                             }
                             else
                             {
                                 break;
                             }
                         }
-                        if (contador == num)
-                        {
-                            continuarIteraciones = false;
-                        }
                     }
                 }
             }
         }
     }
 
-    Cargar.close();
+    Upload_File.close();
 }
 
-std::string eliminarEspaciosBlancos(const std::string &cadena)
+std::string Megatron::Erase_Blanks(std::string cadena)
 {
     std::string resultado;
 
@@ -759,7 +575,7 @@ std::string eliminarEspaciosBlancos(const std::string &cadena)
     return resultado;
 }
 
-bool Registro_Tabla(std::string linea, std::string NTabla)
+bool Megatron::IsRecord_inTable(std::string linea, std::string NTabla)
 {
 
     size_t posInicio = linea.find_first_of('#', linea.find_first_of('#') + 1);
@@ -871,7 +687,7 @@ void Megatron::Select_1(std::string NDisco)
     }
 
     std::string linea, palabra;
-    std::vector<int> Info = Info_Disco(NDisco);
+    int *Info = Info_Disk(NDisco);
     bool continuarIteraciones = true;
     for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
     {
@@ -895,14 +711,14 @@ void Megatron::Select_1(std::string NDisco)
 
                         if (linea.length() > sumatoria)
                         {
-                            if (Registro_Tabla(linea, nEsquema))
+                            if (IsRecord_inTable(linea, nEsquema))
                             {
                                 int offsett = sumatoria + encontrarTercerNumeral(linea);
                                 for (size_t i = offsett + 1; i <= offsett + Max(get_Esquema(nEsquema), offset + 1); i++)
                                 {
                                     palabra += linea[i];
                                 }
-                                palabra = eliminarEspaciosBlancos(palabra);
+                                palabra = Erase_Blanks(palabra);
                                 if (palabra == valor)
                                 {
                                     std::string select;
@@ -973,75 +789,6 @@ std::string Megatron::LlenarI(std::string linea, int cant)
     return res;
 }
 
-std::string Megatron::LlenarD(std::string linea, int cant)
-{
-    std::string res;
-    size_t resto = cant - linea.length();
-    res += linea;
-    for (size_t i = 0; i < resto; i++)
-    {
-        res += " ";
-    }
-
-    return res;
-}
-
-std::string Megatron::Vaciar(std::string linea, int *max, std::string esquema)
-{
-    std::string resultado = linea;
-    size_t offset = 0;
-    int natri = get_NumAtributos(esquema);
-    for (int i = 0; i < natri; ++i)
-    {
-        size_t pos = max[i];
-        if (pos + offset < resultado.size())
-        {
-            resultado.insert(pos + offset, "#");
-            offset++;
-            offset += max[i];
-        }
-    }
-    resultado.erase(std::remove_if(resultado.begin(), resultado.end(), [](unsigned char c)
-                                   { return std::isspace(c); }),
-                    resultado.end());
-    std::string res, segmento;
-    int mult = 1, enca = 0, maxi = 0;
-    std::string esq = get_Esquema(esquema);
-    for (size_t i = 0; i < resultado.length(); i++)
-    {
-
-        if (resultado[i] == '#')
-        {
-            enca = Encabezados(esq, mult);
-            maxi = Max(esq, mult);
-            if (enca < maxi)
-            {
-                res += LlenarD(segmento, maxi + 1);
-            }
-            else
-            {
-                res += LlenarD(segmento, enca + 1);
-            }
-            segmento.clear();
-            mult++;
-        }
-        else
-        {
-            segmento += resultado[i];
-        }
-    }
-    enca = Encabezados(esq, mult);
-    maxi = Max(esq, mult);
-    if (enca < maxi)
-    {
-        res += LlenarD(segmento, maxi);
-    }
-    else
-    {
-        res += LlenarD(segmento, enca);
-    }
-    return res;
-}
 
 std::string Megatron::get_Esquema(std::string tabla)
 {
@@ -1103,31 +850,6 @@ int Megatron::Max(std::string esq, int mult)
     return max;
 }
 
-int Megatron::Encabezados(std::string esquema, int mult)
-{
-    size_t pos = 0;
-    int contador = 2, max = 0;
-
-    while ((pos = esquema.find('#', pos)) != std::string::npos)
-    {
-        ++contador;
-        if (contador == 3 * mult)
-        {
-            pos++;
-            while (pos < esquema.length() && esquema[pos] != '#')
-            {
-                max++;
-                pos++;
-            }
-        }
-        else
-        {
-            pos++;
-        }
-    }
-    return max;
-}
-
 std::string Megatron::get_NomAtributos(std::string tabla)
 {
 
@@ -1157,25 +879,6 @@ std::string Megatron::get_NomAtributos(std::string tabla)
     return nombres;
 }
 
-int *Megatron::Max(std::string esq)
-{
-    size_t pos = 0;
-    int contador = 0;
-    std::string str;
-    while ((pos = esq.find('#', pos)) != std::string::npos)
-    {
-        ++contador;
-        ++pos;
-    }
-    contador = (contador - 1) / 3;
-    int *numero_str = new int[contador];
-    for (int i = 0; i < contador; i++)
-    {
-        numero_str[i] = Max(esq, i + 1);
-    }
-
-    return numero_str;
-}
 
 void Megatron::Select_(std::string NDisco)
 {
@@ -1187,7 +890,7 @@ void Megatron::Select_(std::string NDisco)
 
     int sumatoria = Max(get_Esquema(nEsquema), 1);
     std::string linea, palabra;
-    std::vector<int> Info = Info_Disco(NDisco);
+    int *Info = Info_Disk(NDisco);
     bool continuarIteraciones = true;
     for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
     {
@@ -1211,10 +914,10 @@ void Megatron::Select_(std::string NDisco)
 
                         if (linea.length() > sumatoria)
                         {
-                            if (Registro_Tabla(linea, nEsquema))
+                            if (IsRecord_inTable(linea, nEsquema))
                             {
                                 std::string select;
-                                select += "Plato " + std::to_string(Info[i]) + ", Superficie " + std::to_string(Info[j]) + ", Pista " + std::to_string(Info[k]) + ", Sector " + std::to_string(Info[l]) + ":";
+                                select += "Plato " + std::to_string(Info[i-1]) + ", Superficie " + std::to_string(Info[j-1]) + ", Pista " + std::to_string(Info[k-1]) + ", Sector " + std::to_string(Info[l-1]) + ":";
                                 int offsett = encontrarTercerNumeral(linea);
                                 for (size_t i = offsett + 1; i < linea.length(); i++)
                                 {
@@ -1261,7 +964,7 @@ void Megatron::Select_(std::string nEsquema, std::string atributo, std::string s
 
     std::string linea, palabrastr;
     int palabra;
-    std::vector<int> Info = Info_Disco(NDisco);
+    int *Info = Info_Disk(NDisco);
     for (int i = 1; i <= Info[0]; ++i)
     {
         std::string dirPlato = fs::current_path().string() + "/" + NDisco + "/Plato_" + std::to_string(i);
@@ -1284,14 +987,14 @@ void Megatron::Select_(std::string nEsquema, std::string atributo, std::string s
 
                         if (linea.length() > sumatoria)
                         {
-                            if (Registro_Tabla(linea, nEsquema))
+                            if (IsRecord_inTable(linea, nEsquema))
                             {
                                 int offsett = sumatoria + encontrarTercerNumeral(linea);
                                 for (size_t i = offsett + 1; i <= offsett + Max(get_Esquema(nEsquema), offset + 1); i++)
                                 {
                                     palabrastr += linea[i];
                                 }
-                                palabrastr = eliminarEspaciosBlancos(palabrastr);
+                                palabrastr = Erase_Blanks(palabrastr);
                                 palabra = std::stoi(palabrastr);
                                 if (signo == "<")
                                 {
@@ -1336,81 +1039,7 @@ void Megatron::Select_(std::string nEsquema, std::string atributo, std::string s
     }
 }
 
-bool Megatron::Entero(const std::string &cadena1, const std::string &cadena2, const std::string &palabra)
-{
-    std::istringstream ss1(cadena1);
-    std::istringstream ss2(cadena2);
-    std::string token1, token2;
-
-    while (std::getline(ss1, token1, ','))
-    {
-        if (token1 == palabra)
-        {
-            while (std::getline(ss2, token2, '#'))
-            {
-                if (token2 == palabra)
-                {
-                    if (std::getline(ss2, token2, '#'))
-                    {
-                        return (token2 == "int");
-                    }
-                }
-            }
-        }
-    }
-    return false;
-}
-
-void buscarYEliminar(const std::string &directorioPadre, char caracterABuscar)
-{
-    // Iterar sobre todos los archivos y carpetas dentro del directorio padre
-    for (const auto &entrada : fs::directory_iterator(directorioPadre))
-    {
-        // Verificar si la entrada es un archivo
-        if (fs::is_regular_file(entrada))
-        {
-            // Obtener el nombre del archivo
-            std::string nombreArchivo = entrada.path().filename().string();
-
-            // Verificar si el archivo es un archivo de texto (.txt)
-            if (nombreArchivo.find(".txt") != std::string::npos)
-            {
-                // Abrir el archivo para lectura y escritura
-                std::ifstream archivoEntrada(entrada.path());
-                std::ofstream archivoSalida(entrada.path().string() + ".temp");
-
-                // Procesar el archivo línea por línea
-                std::string linea;
-                while (std::getline(archivoEntrada, linea))
-                {
-                    // Buscar y eliminar el caracter en la línea
-                    size_t pos = linea.find(caracterABuscar);
-                    if (pos != std::string::npos)
-                    {
-                        // Eliminar el caracter
-                        linea.erase(pos, 1);
-                    }
-
-                    // Escribir la línea modificada en el archivo de salida
-                    archivoSalida << linea << std::endl;
-                }
-
-                // Cerrar los archivos
-                archivoEntrada.close();
-                archivoSalida.close();
-
-                // Reemplazar el archivo original con el archivo temporal
-                fs::rename(entrada.path().string() + ".temp", entrada.path());
-            }
-        }
-        else if (fs::is_directory(entrada))
-        {
-            // Si la entrada es un directorio, llamar recursivamente a la función
-            buscarYEliminar(entrada.path().string(), caracterABuscar);
-        }
-    }
-}
-
+/*
 void Megatron::Select_I(std::string NDisco)
 {
     std::string atributo, signo, nEsquema, esquema, nomatributos, segmento;
@@ -1489,4 +1118,4 @@ void Megatron::Select_I(std::string NDisco)
     std::cin >> valor;
 
     Select_(nEsquema, atributo, signo, valor, NDisco);
-}
+}*/

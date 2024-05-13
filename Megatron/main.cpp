@@ -15,56 +15,17 @@ void Menu()
 
 int main()
 {
-
-    Megatron DB;
     //  g++ -o main main.cpp Megatron.cpp Disco.cpp
-    
-    int opc;
-    while (opc != 5)
-    {
-        Menu();
-        std::cin >> opc;
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        switch (opc)
-        {
-        case 1:
-            std::string name;
-            std::cout << "Ingrese nombre del disco: ";
-            std::cin >> name;
-            Disco A(name);
-            break;
-        case 2:
-            std::string name;
-            int Plates, Surfaces, Tracks, Section, Blocks, CapSection;
-            std::cout << "Ingrese nombre del disco: ";
-            std::cin >> name;
-            std::cout << "Ingrese Platos del disco: ";
-            std::cin >> Plates;
-            std::cout << "Ingrese Pistas del disco: ";
-            std::cin >> Tracks;
-            std::cout << "Ingrese Sectores del disco: ";
-            std::cin >> Section;
-            std::cout << "Ingrese la capacidad del sector: ";
-            std::cin >> CapSection;
-            std::cout << "Ingrese numero de bloques: ";
-            std::cin >> Blocks;
-            Disco B(name, Plates, 2, Tracks, Section, Blocks, CapSection);
-            break;
-        case 3:
-            DB.Cargar();
-            break;
-        case 4:
-            DB.Select_();
-            break;
-        case 5:
-            opc = 5;
-            break;
-        default:
-            std::cout << "Seleccione una opcion: ";
-            std::cin >> opc;
-            break;
-        }
-    }
+    Megatron DB;
+    Disco A("Disco_1");
+    Disco B("Disco_",4,2,4,8,1000);
+    DB.Cargar("Disco_1");
+    DB.Select_("Disco_1");
+    B.FullCapacity("Disco_1");
+    B.MaxCapacity();
+    std::cout << B.GetSectorCapacity();
+
+
 
     return 0;
 }
