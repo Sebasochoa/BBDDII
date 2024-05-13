@@ -191,5 +191,31 @@ int Disco::FullCapacity(std::string NDisco)
 
 int Disco::GetSectorCapacity()
 {
-    return CapSection;
+    std::string Directory = fs::current_path().string() + "/" + Name;
+
+    for (size_t i = 0; i < Plates; i++)
+    {
+        std::string Directory_Plate = Directory + "/Plato_" + std::to_string(i);
+
+        for (size_t j = 0; j < Surfaces; j++)
+        {
+            std::string Directory_Surface = Directory_Plate + "/Superficie_" + std::to_string(j);
+
+            for (size_t k = 0; k < Tracks; k++)
+            {
+
+                std::string Directory_Track = Directory_Surface + "/Pista_" + std::to_string(k);
+                for (size_t l = 0; l < Sectors; l++)
+                {
+                    std::string Directory_Sector = Directory_Track + "/Sector_" + std::to_string(l);
+                    std::ifstream Directory_File(Directory_Sector);
+                    std::string File_Line;
+                    getline(Directory_File, File_Line);
+                    std::cout << "Capacidad del Sector: " << File_Line << std::endl;
+                    continue;
+                    
+                }
+            }
+        }
+    }
 }
