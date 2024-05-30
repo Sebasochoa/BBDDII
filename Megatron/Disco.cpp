@@ -47,7 +47,7 @@ Disco::Disco(const std::string &NDisco)
     }
 }
 
-Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks, int NSections, int Capacity)
+Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks, int NSections, int Capacity, int NumSectorxBloque)
 {
     Name = NDisco;
     Plates = NPlates;
@@ -55,6 +55,7 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
     Tracks = NTracks;
     Sectors = NSections;
     CapSection = Capacity;
+    Blocks = NumSectorxBloque;
 
     std::string directorio = fs::current_path().string();
     std::string dirNDisco = directorio + "/" + NDisco;
@@ -92,6 +93,11 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
             }
         }
     }
+}
+
+std::string Disco::Get_Name()
+{
+    return Name;
 }
 
 int Disco::MaxCapacity()

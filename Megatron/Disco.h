@@ -13,8 +13,9 @@ private:
     std::string Name;
 
 public:
-    Disco(const std::string&);
-    Disco(const std::string&, int, int, int, int, int);
+    Disco(const std::string &);
+    Disco(const std::string &, int, int, int, int, int, int);
+    std::string Get_Name();
     int MaxCapacity();
     int FullCapacity(std::string);
     int GetSectorCapacity();

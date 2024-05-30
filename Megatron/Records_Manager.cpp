@@ -7,32 +7,23 @@
 #include <cctype>
 #include <sstream>
 #include "Disco.h"
-#include "Megatron.h"
+#include "Records_Manager.h"
 #include <vector>
 #include <filesystem>
 #include <array>
 
 namespace fs = std::filesystem;
 
-Megatron::Megatron()
-{
-    if (!Existe("../Esquemas.txt"))
-    {
-        std::ofstream archivo("../Esquemas.txt");
-    }
-}
-
-Megatron::~Megatron()
+Records_Manager::Records_Manager()
 {
 }
 
-bool Megatron::Existe(const char *nombreArchivo)
+Records_Manager::~Records_Manager()
 {
-    std::ifstream archivo(nombreArchivo);
-    return archivo.good();
 }
 
-int Megatron::get_NumAtributos(std::string esquema)
+
+int Records_Manager::get_NumAtributos(std::string esquema)
 {
     std::string linea;
     std::ifstream archivo(fs::current_path().string() + "/Esquemas.txt");
@@ -66,7 +57,7 @@ int Megatron::get_NumAtributos(std::string esquema)
     return contador;
 }
 
-bool Megatron::Int(std::string texto)
+bool Records_Manager::Int(std::string texto)
 {
     if (!texto.empty())
     {
@@ -80,14 +71,14 @@ bool Megatron::Int(std::string texto)
     }
 }
 
-bool Megatron::Float(std::string texto)
+bool Records_Manager::Float(std::string texto)
 {
     std::istringstream ss(texto);
     float valor;
     return ss >> valor && ss.eof();
 }
 
-int *Megatron::Info_Disk(std::string Name_Disk)
+int *Records_Manager::Info_Disk(std::string Name_Disk)
 {
     std::string Directory_Disk = fs::current_path().string() + "/" + Name_Disk;
 
@@ -175,7 +166,7 @@ int *Megatron::Info_Disk(std::string Name_Disk)
     return Directory;
 }
 
-int RemainCapacity(std::string Archivo)
+int Records_Manager::RemainCapacity(std::string Archivo)
 {
     std::ifstream archivo(Archivo);
     std::string linea, segmento;
@@ -197,7 +188,7 @@ int RemainCapacity(std::string Archivo)
     return valor;
 }
 
-void Megatron::First_Line(std::string Directory_File, std::string Replace_Line)
+void Records_Manager::First_Line(std::string Directory_File, std::string Replace_Line)
 {
     std::ifstream Source_File(Directory_File);
 
@@ -218,7 +209,7 @@ void Megatron::First_Line(std::string Directory_File, std::string Replace_Line)
     Output_File.close();
 }
 
-int NumRegistros(std::string DirArchivo)
+int Records_Manager::NumRegistros(std::string DirArchivo)
 {
     std::ifstream archivo(DirArchivo);
     std::string linea;
@@ -230,7 +221,82 @@ int NumRegistros(std::string DirArchivo)
     return Num - 1;
 }
 
-bool Megatron::Check_Schemes(std::string Name_Scheme)
+std::string *Records_Manager::split(std::string &s, char delimiter, int &numTokens)
+{
+    numTokens = 1;
+    bool inQuotes = false;
+    for (char c : s)
+    {
+        if (c == '"')
+        {
+            inQuotes = !inQuotes;
+        }
+        else if (c == delimiter && !inQuotes)
+        {
+            numTokens++;
+        }
+    }
+
+    std::string *tokens = new std::string[numTokens];
+    std::string token;
+    int index = 0;
+    inQuotes = false;
+
+    for (char c : s)
+    {
+        if (c == '"')
+        {
+            inQuotes = !inQuotes;
+        }
+        else if (c == delimiter && !inQuotes)
+        {
+            tokens[index++] = token;
+            token.clear();
+            continue;
+        }
+        token += c;
+    }
+    tokens[index] = token;
+
+    return tokens;
+}
+
+int *Records_Manager::findLongestEntryLengths(std::string &filename, int &numAttributes)
+{
+    std::ifstream file(filename);
+    std::string line;
+    int *maxAttributeLengths = nullptr;
+    numAttributes = 0;
+    std::getline(file, line);
+
+    while (std::getline(file, line))
+    {
+        int numTokens = 0;
+        std::string *attributes = split(line, ',', numTokens);
+
+        if (maxAttributeLengths == nullptr)
+        {
+            numAttributes = numTokens;
+            maxAttributeLengths = new int[numAttributes];
+            for (int i = 0; i < numAttributes; ++i)
+            {
+                maxAttributeLengths[i] = 0;
+            }
+        }
+
+        for (int i = 0; i < numTokens; ++i)
+        {
+            maxAttributeLengths[i] = std::max(maxAttributeLengths[i], static_cast<int>(attributes[i].length()));
+        }
+
+        delete[] attributes;
+    }
+
+    file.close();
+    return maxAttributeLengths;
+}
+
+bool Records_Manager::Check_Schemes(std::string Name_Scheme)
 {
     std::ifstream File_Schemes(fs::current_path().string() + "/Esquemas.txt");
 
@@ -252,7 +318,7 @@ bool Megatron::Check_Schemes(std::string Name_Scheme)
     return false;
 }
 
-void Megatron::Create_Scheme(std::string Name_Scheme)
+void Records_Manager::Create_Scheme(std::string Name_Scheme)
 {
     std::string Scheme = Name_Scheme + "#";
 
@@ -260,10 +326,16 @@ void Megatron::Create_Scheme(std::string Name_Scheme)
 
     std::ifstream Upload_File(fs::current_path().string() + "/" + Name_Scheme + ".csv");
 
+    std::string filename = fs::current_path().string() + "/" + Name_Scheme + ".csv";
+    int numAttributes = 0;
+
+    int *Length_Atributes = findLongestEntryLengths(filename, numAttributes);
+
     getline(Upload_File, Name_Attribute_Line);
     getline(Upload_File, Record_Line);
     Upload_File.close();
     size_t j = 0;
+    int k = 0;
 
     for (size_t i = 0; i <= Name_Attribute_Line.length() + 1; i++)
     {
@@ -275,22 +347,18 @@ void Megatron::Create_Scheme(std::string Name_Scheme)
                 {
                     if (Int(Record))
                     {
-                        Scheme += Name_Attribute + "#int#8#";
+                        Scheme += Name_Attribute + "#int#" + std::to_string(Length_Atributes[k]) + "#";
+                        k++;
                     }
                     else if (Float(Record))
                     {
-                        Scheme += Name_Attribute + "#float#10#";
+                        Scheme += Name_Attribute + "#float#" + std::to_string(Length_Atributes[k]) + "#";
+                        k++;
                     }
                     else
                     {
-                        if (Record.length() > 20)
-                        {
-                            Scheme += Name_Attribute + "#str#70#";
-                        }
-                        else
-                        {
-                            Scheme += Name_Attribute + "#str#20#";
-                        }
+                        Scheme += Name_Attribute + "#str#" + std::to_string(Length_Atributes[k]) + "#";
+                        k++;
                     }
                     break;
                 }
@@ -315,7 +383,7 @@ void Megatron::Create_Scheme(std::string Name_Scheme)
     Scheme_File.close();
 }
 
-void Megatron::Cargar(std::string Name_Disk)
+void Records_Manager::Cargar(std::string Name_Disk)
 {
     std::string Upload_File_Name, Name_Scheme;
 
@@ -376,7 +444,7 @@ void Megatron::Cargar(std::string Name_Disk)
                             if (Vacio > longitud)
                             {
                                 contador++;
-                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l),num) << std::endl;
 
                                 First_Line(Directory_File, std::to_string(Vacio - longitud));
                             }
@@ -398,7 +466,7 @@ void Megatron::Cargar(std::string Name_Disk)
     Upload_File.close();
 }
 
-void Megatron::Cargar1(std::string Name_Disk)
+void Records_Manager::Cargar1(std::string Name_Disk)
 {
     std::string Upload_File_Name, Name_Scheme;
 
@@ -423,6 +491,7 @@ void Megatron::Cargar1(std::string Name_Disk)
     getline(Upload_File, Trash);
 
     int num = 1, contador = 0;
+    int numReg = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
 
     bool continuarIteraciones = true;
 
@@ -459,7 +528,7 @@ void Megatron::Cargar1(std::string Name_Disk)
                             if (Vacio > longitud && contador != num)
                             {
 
-                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), numReg) << std::endl;
 
                                 First_Line(Directory_File, std::to_string(Vacio - longitud));
                                 contador++;
@@ -478,7 +547,7 @@ void Megatron::Cargar1(std::string Name_Disk)
     Upload_File.close();
 }
 
-void Megatron::Cargarn(std::string Name_Disk)
+void Records_Manager::Cargarn(std::string Name_Disk)
 {
     std::string Upload_File_Name, Name_Scheme;
     int num = 0;
@@ -503,6 +572,8 @@ void Megatron::Cargarn(std::string Name_Disk)
     int *Info = Info_Disk(Name_Disk);
 
     std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
+
+    int numReg = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
     getline(Upload_File, Trash);
 
     int contador = 0;
@@ -542,7 +613,7 @@ void Megatron::Cargarn(std::string Name_Disk)
                             if (Vacio > longitud && contador == num)
                             {
                                 contador++;
-                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l),numReg) << std::endl;
 
                                 First_Line(Directory_File, std::to_string(Vacio - longitud));
                             }
@@ -560,7 +631,7 @@ void Megatron::Cargarn(std::string Name_Disk)
     Upload_File.close();
 }
 
-std::string Megatron::Erase_Blanks(std::string cadena)
+std::string Records_Manager::Erase_Blanks(std::string cadena)
 {
     std::string resultado;
 
@@ -575,7 +646,7 @@ std::string Megatron::Erase_Blanks(std::string cadena)
     return resultado;
 }
 
-bool Megatron::IsRecord_inTable(std::string linea, std::string NTabla)
+bool Records_Manager::IsRecord_inTable(std::string linea, std::string NTabla)
 {
 
     size_t posInicio = linea.find_first_of('#', linea.find_first_of('#') + 1);
@@ -595,6 +666,8 @@ bool Megatron::IsRecord_inTable(std::string linea, std::string NTabla)
     return segmento == NTabla;
 }
 
+
+//Hacerlo con cualquier numeral
 int encontrarTercerNumeral(const std::string &cadena)
 {
     size_t posPrimero = cadena.find_first_of('#');
@@ -618,7 +691,7 @@ int encontrarTercerNumeral(const std::string &cadena)
     return static_cast<int>(posTercero);
 }
 
-void Megatron::Select_1(std::string NDisco)
+void Records_Manager::Select_1(std::string NDisco)
 {
 
     std::string atributo, signo, nEsquema, esquema, nomatributos, segmento, valor;
@@ -746,7 +819,7 @@ void Megatron::Select_1(std::string NDisco)
     }
 }
 
-std::string Megatron::Corregir(std::string linea, std::string NTabla, int contador, std::string dir)
+std::string Records_Manager::Corregir(std::string linea, std::string NTabla, int contador, std::string dir, int num_Registros)
 {
     size_t pos = 0;
     std::string res, esq;
@@ -754,8 +827,13 @@ std::string Megatron::Corregir(std::string linea, std::string NTabla, int contad
     std::getline(esquemas, esq);
     int mult = 1;
     bool str = false;
-    std::string segmento;
-    res += dir + '#' + std::to_string(contador) + "#" + NTabla + "#";
+    std::string segmento, id_Reg;
+
+    std::stringstream ss;
+    ss << std::setw(std::to_string(num_Registros).length()) << std::setfill(' ') << contador;
+    id_Reg =  ss.str();
+
+    res += dir + '#' + id_Reg + "#" + NTabla + "#";
     for (size_t i = 0; i < linea.length(); i++)
     {
         if (linea[i] == '"')
@@ -777,7 +855,7 @@ std::string Megatron::Corregir(std::string linea, std::string NTabla, int contad
     return res;
 }
 
-std::string Megatron::LlenarI(std::string linea, int cant)
+std::string Records_Manager::LlenarI(std::string linea, int cant)
 {
     std::string res;
     size_t resto = cant - linea.length();
@@ -789,8 +867,7 @@ std::string Megatron::LlenarI(std::string linea, int cant)
     return res;
 }
 
-
-std::string Megatron::get_Esquema(std::string tabla)
+std::string Records_Manager::get_Esquema(std::string tabla)
 {
     std::string linea;
     std::ifstream archivo(fs::current_path().string() + "/Esquemas.txt");
@@ -817,7 +894,7 @@ std::string Megatron::get_Esquema(std::string tabla)
     return linea;
 }
 
-int Megatron::Max(std::string esq, int mult)
+int Records_Manager::Max(std::string esq, int mult)
 {
     size_t pos = 0;
     int contador = 0, max = 0;
@@ -850,7 +927,7 @@ int Megatron::Max(std::string esq, int mult)
     return max;
 }
 
-std::string Megatron::get_NomAtributos(std::string tabla)
+std::string Records_Manager::get_NomAtributos(std::string tabla)
 {
 
     size_t pos = 0;
@@ -879,8 +956,7 @@ std::string Megatron::get_NomAtributos(std::string tabla)
     return nombres;
 }
 
-
-void Megatron::Select_(std::string NDisco)
+void Records_Manager::Select_(std::string NDisco)
 {
     std::string atributo, signo, nEsquema, esquema, nomatributos, segmento, valor;
     int j = 0;
@@ -917,7 +993,7 @@ void Megatron::Select_(std::string NDisco)
                             if (IsRecord_inTable(linea, nEsquema))
                             {
                                 std::string select;
-                                select += "Plato " + std::to_string(Info[i-1]) + ", Superficie " + std::to_string(Info[j-1]) + ", Pista " + std::to_string(Info[k-1]) + ", Sector " + std::to_string(Info[l-1]) + ":";
+                                select += "Plato " + std::to_string(Info[i - 1]) + ", Superficie " + std::to_string(Info[j - 1]) + ", Pista " + std::to_string(Info[k - 1]) + ", Sector " + std::to_string(Info[l - 1]) + ":";
                                 int offsett = encontrarTercerNumeral(linea);
                                 for (size_t i = offsett + 1; i < linea.length(); i++)
                                 {
@@ -934,7 +1010,7 @@ void Megatron::Select_(std::string NDisco)
     }
 }
 
-void Megatron::Select_(std::string nEsquema, std::string atributo, std::string signo, int valor, std::string NDisco)
+void Records_Manager::Select_(std::string nEsquema, std::string atributo, std::string signo, int valor, std::string NDisco)
 {
     std::string esquema, nomatributos, segmento;
     int j = 0;
@@ -1039,83 +1115,3 @@ void Megatron::Select_(std::string nEsquema, std::string atributo, std::string s
     }
 }
 
-/*
-void Megatron::Select_I(std::string NDisco)
-{
-    std::string atributo, signo, nEsquema, esquema, nomatributos, segmento;
-    int valor = 0, j = 0;
-
-    std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
-    getline(std::cin, nEsquema);
-
-    int numatributos = get_NumAtributos(nEsquema);
-    std::string *enteros = new std::string[numatributos];
-
-    esquema = get_Esquema(nEsquema);
-    nomatributos = get_NomAtributos(esquema);
-
-    for (size_t i = 0; i < nomatributos.length(); i++)
-    {
-
-        if (nomatributos[i] == ',')
-        {
-            if (Entero(nomatributos, esquema, segmento))
-            {
-
-                if (j < numatributos)
-                {
-                    enteros[j] = segmento;
-                }
-                j++;
-            }
-            segmento.clear();
-        }
-        else
-        {
-            segmento += nomatributos[i];
-        }
-    }
-    int longitud = sizeof(enteros[0]) / sizeof(enteros), opc = 100000;
-    std::cout << "Ingrese el atributo a seleccionar: \n";
-    for (int i = 0; i < longitud; i++)
-    {
-
-        std::cout << i + 1 << ". " << enteros[i] << std::endl;
-    }
-    while (opc > longitud + 1)
-    {
-        std::cout << "Ingrese una opcion valida: ";
-        std::cin >> opc;
-    }
-    atributo = enteros[opc - 1];
-    opc = 0;
-    while (opc < 1 || opc > 4)
-    {
-        std::cout << "Signo de comparacion: \n1. <\n2. >\n3. <=\n4. >=\nIngrese una opcion valida: ";
-        std::cin >> opc;
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        switch (opc)
-        {
-        case 1:
-            signo = "<";
-            break;
-        case 2:
-            signo = ">";
-            break;
-        case 3:
-            signo = "<=";
-            break;
-        case 4:
-            signo = ">=";
-            break;
-        default:
-            std::cout << "Seleccione una opcion: ";
-            std::cin >> opc;
-            break;
-        }
-    }
-    std::cout << "Ingrese cantidad a comparar: ";
-    std::cin >> valor;
-
-    Select_(nEsquema, atributo, signo, valor, NDisco);
-}*/

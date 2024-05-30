@@ -51,6 +51,11 @@
         "ratio": "cpp",
         "string_view": "cpp",
         "iomanip": "cpp",
-        "numbers": "cpp"
+        "numbers": "cpp",
+        "charconv": "cpp",
+        "chrono": "cpp",
+        "format": "cpp",
+        "span": "cpp",
+        "variant": "cpp"
     }
 }
