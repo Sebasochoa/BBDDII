@@ -207,53 +207,78 @@ void Disco::Upload_Blocks()
     std::string Upload_File_Line;
     int contador = 1;
 
-    auto open_next_block = [&]() {
-        // Abrir el siguiente archivo de bloque
+    auto open_next_block = [&]()
+    {
         Upload_File.open(dirDisck + std::to_string(m) + ".txt");
-        if (Upload_File) {
-            // Saltar la primera línea (el encabezado)
-            if (!std::getline(Upload_File, Upload_File_Line)) {
+        if (Upload_File)
+        {
+            if (!std::getline(Upload_File, Upload_File_Line))
+            {
                 moreLines = false;
             }
-        } else {
+        }
+        else
+        {
             moreLines = false;
         }
     };
 
-    // Abrir el primer archivo de bloque
     open_next_block();
-
-    for (int i = 1; i <= Plates && moreLines; ++i) {
+    std::string foult_line;
+    for (int i = 1; i <= Plates && moreLines; ++i)
+    {
         fs::path Directory_Plate = currentPath / Name / ("Plato_" + std::to_string(i));
 
-        for (int j = 1; j <= Surfaces && moreLines; ++j) {
+        for (int j = 1; j <= Surfaces && moreLines; ++j)
+        {
             fs::path Directory_Surface = Directory_Plate / ("Superficie_" + std::to_string(j));
 
-            for (int k = 1; k <= Tracks && moreLines; ++k) {
+            for (int k = 1; k <= Tracks && moreLines; ++k)
+            {
                 fs::path Directory_Track = Directory_Surface / ("Pista_" + std::to_string(k));
 
-                for (int l = 1; l <= Sectors && moreLines; ++l) {
+                for (int l = 1; l <= Sectors && moreLines; ++l)
+                {
                     fs::path Directory_Sector = Directory_Track / ("Sector_" + std::to_string(l));
                     fs::path Directory_File = Directory_Sector / (std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt");
 
                     std::ofstream txt(Directory_File, std::ios::app);
-                    std::cout << "Escribiendo en: " << Directory_File << std::endl;
 
-                    while (Upload_File.is_open() && std::getline(Upload_File, Upload_File_Line)) {
+                    while (Upload_File.is_open() && std::getline(Upload_File, Upload_File_Line))
+                    {
+                        if (!foult_line.empty())
+                        {
+                            int longitud = static_cast<int>(foult_line.length());
+                            int Vacio = RemainCapacity(Directory_File.string());
+
+                            if (Vacio > longitud)
+                            {
+                                txt << Corregir(foult_line, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+                                First_Line(Directory_File.string(), std::to_string(Vacio - longitud));
+                                ++contador;
+                            }
+                            foult_line.clear();
+                        }
+
                         int longitud = static_cast<int>(Upload_File_Line.length());
                         int Vacio = RemainCapacity(Directory_File.string());
 
-                        if (Vacio > longitud) {
+                        if (Vacio > longitud)
+                        {
                             txt << Corregir(Upload_File_Line, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
                             First_Line(Directory_File.string(), std::to_string(Vacio - longitud));
                             ++contador;
-                        } else {
-                            break; // Si el sector está lleno, pasa al siguiente sector
+                        }
+                        else
+                        {
+                            foult_line = Upload_File_Line;
+                            break;
+                            
                         }
                     }
 
-                    // Si llegamos al final del archivo de bloque actual, abre el siguiente
-                    if (Upload_File.eof()) {
+                    if (Upload_File.eof())
+                    {
                         Upload_File.close();
                         ++m;
                         open_next_block();
