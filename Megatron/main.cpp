@@ -21,6 +21,7 @@ int main()
     DB.Cargar("Disco_1");*/
     SGBD A;
     A.Create_Disk();
+    A.Cargar();
 
 
 

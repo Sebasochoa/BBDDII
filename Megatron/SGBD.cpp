@@ -27,5 +27,22 @@ void SGBD::Create_Disk()
     std::cin >> NumSectorxBloque;
 
     Discos.push_back(Disco(Name_Disk,NPlates,2,NTracks,NSections,Capacity,NumSectorxBloque));
-    std::cout << Discos[0].Get_Name() << std::endl;
+}
+
+void SGBD::Cargar()
+{
+    std::string name_disk;
+    std::cout << "Ingrese el Disco al que quiere Cargar el documento: ";
+    std::cin >>name_disk;
+    Records.Cargar(name_disk);
+    int j = 0;
+    for (size_t i = 0; i < Discos.size(); i++)
+    {
+        if (name_disk == Discos[i].Get_Name())
+        {
+            j = i;
+        }
+    }
+    Discos[j].Upload_Blocks();
+    
 }

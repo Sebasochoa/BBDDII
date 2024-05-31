@@ -1,6 +1,6 @@
 #ifndef DISCO_H
 #define DISCO_H
-#include <string>
+#include "Bloques.h"
 class Disco
 {
 private:
@@ -8,9 +8,9 @@ private:
     int Surfaces;
     int Tracks;
     int Sectors;
-    int Blocks;
     int CapSection;
     std::string Name;
+    Bloques Blocks;
 
 public:
     Disco(const std::string &);
@@ -18,6 +18,11 @@ public:
     std::string Get_Name();
     int MaxCapacity();
     int FullCapacity(std::string);
-    int GetSectorCapacity();
+    //int GetSectorCapacity();
+    void Upload_Blocks();
+    void Clear_Blocks();
+    int RemainCapacity(std::string);
+    std::string Corregir(std::string, int ,std::string);
+    void First_Line(std::string, std::string);
 };
 #endif

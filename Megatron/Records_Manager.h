@@ -14,7 +14,7 @@ public:
     void Select_(std::string);
     void Select_(std::string, std::string, std::string, int, std::string);
     void Select_I(std::string);
-    std::string Corregir(std::string, std::string, int, std::string,int);
+    std::string Corregir(std::string, std::string);//, int, std::string,int);
     int Max(std::string, int);
     std::string LlenarI(std::string, int);
     std::string get_Esquema(std::string);

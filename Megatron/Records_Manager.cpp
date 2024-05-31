@@ -22,7 +22,6 @@ Records_Manager::~Records_Manager()
 {
 }
 
-
 int Records_Manager::get_NumAtributos(std::string esquema)
 {
     std::string linea;
@@ -386,7 +385,7 @@ void Records_Manager::Create_Scheme(std::string Name_Scheme)
 void Records_Manager::Cargar(std::string Name_Disk)
 {
     std::string Upload_File_Name, Name_Scheme;
-
+    std::cin.ignore();
     std::cout << "Ingrese el nombre del archivo a cargar: ";
     getline(std::cin, Upload_File_Name);
 
@@ -407,7 +406,31 @@ void Records_Manager::Cargar(std::string Name_Disk)
     std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
     getline(Upload_File, Trash);
 
-    int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv"), contador = 0;
+    int i = 1;
+    // int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv"), contador = 0;
+    std::string Directory_File = fs::current_path().string() + "/" + Name_Disk + "/Bloques";
+    while (getline(Upload_File, Upload_File_Line))
+    {
+        std::string Directory_out = Directory_File + "/Bloque_" + std::to_string(i) + ".txt";
+        std::ofstream Output_File(Directory_out, std::ios::app);
+
+        int longitud = static_cast<int>(Upload_File_Line.length());
+
+        int Vacio = RemainCapacity(Directory_out);
+
+        if (Vacio > longitud)
+        {
+            Output_File << Corregir(Upload_File_Line, Name_Scheme) << std::endl;
+
+            First_Line(Directory_out, std::to_string(Vacio - longitud));
+        }
+        else
+        {
+            i++;
+        }
+    }
+
+    /*int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv"), contador = 0;
 
     bool continuarIteraciones = true;
 
@@ -444,7 +467,7 @@ void Records_Manager::Cargar(std::string Name_Disk)
                             if (Vacio > longitud)
                             {
                                 contador++;
-                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l),num) << std::endl;
+                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), num) << std::endl;
 
                                 First_Line(Directory_File, std::to_string(Vacio - longitud));
                             }
@@ -461,7 +484,7 @@ void Records_Manager::Cargar(std::string Name_Disk)
                 }
             }
         }
-    }
+    }*/
 
     Upload_File.close();
 }
@@ -528,7 +551,7 @@ void Records_Manager::Cargar1(std::string Name_Disk)
                             if (Vacio > longitud && contador != num)
                             {
 
-                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), numReg) << std::endl;
+                                txt << Corregir(Upload_File_Line, Name_Scheme) << std::endl;
 
                                 First_Line(Directory_File, std::to_string(Vacio - longitud));
                                 contador++;
@@ -613,7 +636,7 @@ void Records_Manager::Cargarn(std::string Name_Disk)
                             if (Vacio > longitud && contador == num)
                             {
                                 contador++;
-                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l),numReg) << std::endl;
+                                txt << Corregir(Upload_File_Line, Name_Scheme) << std::endl;
 
                                 First_Line(Directory_File, std::to_string(Vacio - longitud));
                             }
@@ -666,8 +689,7 @@ bool Records_Manager::IsRecord_inTable(std::string linea, std::string NTabla)
     return segmento == NTabla;
 }
 
-
-//Hacerlo con cualquier numeral
+// Hacerlo con cualquier numeral
 int encontrarTercerNumeral(const std::string &cadena)
 {
     size_t posPrimero = cadena.find_first_of('#');
@@ -819,21 +841,26 @@ void Records_Manager::Select_1(std::string NDisco)
     }
 }
 
-std::string Records_Manager::Corregir(std::string linea, std::string NTabla, int contador, std::string dir, int num_Registros)
+std::string Records_Manager::Corregir(std::string linea, std::string NTabla) //, int contador, std::string dir, int num_Registros)
 {
-    size_t pos = 0;
+    /*size_t pos = 0;
     std::string res, esq;
     std::ifstream esquemas(fs::current_path().string() + "/Esquemas.txt");
     std::getline(esquemas, esq);
-    int mult = 1;
+
     bool str = false;
     std::string segmento, id_Reg;
 
     std::stringstream ss;
     ss << std::setw(std::to_string(num_Registros).length()) << std::setfill(' ') << contador;
-    id_Reg =  ss.str();
+    id_Reg = ss.str();
 
-    res += dir + '#' + id_Reg + "#" + NTabla + "#";
+    res += dir + '#' + id_Reg + "#" + NTabla + "#";*/
+
+    int mult = 1;
+    bool str = false;
+    std::string segmento, res;
+    res += NTabla + "#";
     for (size_t i = 0; i < linea.length(); i++)
     {
         if (linea[i] == '"')
@@ -1114,4 +1141,3 @@ void Records_Manager::Select_(std::string nEsquema, std::string atributo, std::s
         }
     }
 }
-
