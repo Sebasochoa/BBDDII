@@ -11,10 +11,10 @@ public:
     ~Records_Manager();
 
     void Select_1(std::string);
-    void Select_(std::string);
+    void Select_all(std::string);
     void Select_(std::string, std::string, std::string, int, std::string);
     void Select_I(std::string);
-    std::string Corregir(std::string, std::string);//, int, std::string,int);
+    std::string Corregir(std::string, std::string, int, std::string,int);
     int Max(std::string, int);
     std::string LlenarI(std::string, int);
     std::string get_Esquema(std::string);
@@ -28,7 +28,7 @@ public:
     void Create_Scheme(std::string);
     int *Info_Disk(std::string);
     int RemainCapacity(std::string);
-    void Cargar(std::string);
+    std::string Cargar(std::string);
     void Cargar1(std::string);
     void Cargarn(std::string);
     void First_Line(std::string, std::string);

@@ -195,7 +195,22 @@ int Disco::FullCapacity(std::string NDisco)
     return s * CapSection;
 }
 
-void Disco::Upload_Blocks()
+bool Disco::IsRecord_inTable(std::string linea, std::string NTabla)
+{
+    size_t posFinal = linea.find_first_of('#');
+    if (posFinal == std::string::npos)
+    {
+        return false;
+    }
+
+    size_t posInicio = 0;
+
+    std::string segmento = linea.substr(posInicio, posFinal);
+
+    return segmento == NTabla;
+}
+
+void Disco::Upload_Blocks(std::string Name_Table)
 {
 
     fs::path currentPath = fs::current_path();
@@ -246,34 +261,36 @@ void Disco::Upload_Blocks()
 
                     while (Upload_File.is_open() && std::getline(Upload_File, Upload_File_Line))
                     {
-                        if (!foult_line.empty())
+                        if (IsRecord_inTable(Upload_File_Line, Name_Table))
                         {
-                            int longitud = static_cast<int>(foult_line.length());
+                            if (!foult_line.empty())
+                            {
+                                int longitud = static_cast<int>(foult_line.length());
+                                int Vacio = RemainCapacity(Directory_File.string());
+
+                                if (Vacio > longitud)
+                                {
+                                    txt << Corregir(foult_line, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+                                    First_Line(Directory_File.string(), std::to_string(Vacio - longitud));
+                                    ++contador;
+                                }
+                                foult_line.clear();
+                            }
+
+                            int longitud = static_cast<int>(Upload_File_Line.length());
                             int Vacio = RemainCapacity(Directory_File.string());
 
                             if (Vacio > longitud)
                             {
-                                txt << Corregir(foult_line, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
+                                txt << Corregir(Upload_File_Line, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
                                 First_Line(Directory_File.string(), std::to_string(Vacio - longitud));
                                 ++contador;
                             }
-                            foult_line.clear();
-                        }
-
-                        int longitud = static_cast<int>(Upload_File_Line.length());
-                        int Vacio = RemainCapacity(Directory_File.string());
-
-                        if (Vacio > longitud)
-                        {
-                            txt << Corregir(Upload_File_Line, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
-                            First_Line(Directory_File.string(), std::to_string(Vacio - longitud));
-                            ++contador;
-                        }
-                        else
-                        {
-                            foult_line = Upload_File_Line;
-                            break;
-                            
+                            else
+                            {
+                                foult_line = Upload_File_Line;
+                                break;
+                            }
                         }
                     }
 

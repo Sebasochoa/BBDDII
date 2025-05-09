@@ -19,7 +19,8 @@ public:
     int MaxCapacity();
     int FullCapacity(std::string);
     //int GetSectorCapacity();
-    void Upload_Blocks();
+    bool IsRecord_inTable(std::string, std::string);
+    void Upload_Blocks(std::string);
     void Clear_Blocks();
     int RemainCapacity(std::string);
     std::string Corregir(std::string, int ,std::string);

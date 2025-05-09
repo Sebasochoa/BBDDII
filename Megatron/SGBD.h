@@ -12,5 +12,7 @@ public:
     ~SGBD();
     void Create_Disk();
     void Cargar();
+    void Select();
+    void Select_Discriminado();
 };
 

@@ -382,14 +382,12 @@ void Records_Manager::Create_Scheme(std::string Name_Scheme)
     Scheme_File.close();
 }
 
-void Records_Manager::Cargar(std::string Name_Disk)
+std::string Records_Manager::Cargar(std::string Name_Disk)
 {
     std::string Upload_File_Name, Name_Scheme;
     std::cin.ignore();
     std::cout << "Ingrese el nombre del archivo a cargar: ";
     getline(std::cin, Upload_File_Name);
-
-    std::ifstream archivo(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
 
     std::cout << "Ingrese nombre a su Relacion: ";
     getline(std::cin, Name_Scheme);
@@ -408,29 +406,29 @@ void Records_Manager::Cargar(std::string Name_Disk)
 
     int i = 1;
     // int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv"), contador = 0;
-    std::string Directory_File = fs::current_path().string() + "/" + Name_Disk + "/Bloques";
-    while (getline(Upload_File, Upload_File_Line))
-    {
-        std::string Directory_out = Directory_File + "/Bloque_" + std::to_string(i) + ".txt";
-        std::ofstream Output_File(Directory_out, std::ios::app);
+    std::string Directory_File = fs::current_path().string() + "/" + Name_Disk + "/Bloques"; /*
+     while (getline(Upload_File, Upload_File_Line))
+     {
+         std::string Directory_out = Directory_File + "/Bloque_" + std::to_string(i) + ".txt";
+         std::ofstream Output_File(Directory_out, std::ios::app);
 
-        int longitud = static_cast<int>(Upload_File_Line.length());
+         int longitud = static_cast<int>(Upload_File_Line.length());
 
-        int Vacio = RemainCapacity(Directory_out);
+         int Vacio = RemainCapacity(Directory_out);
 
-        if (Vacio > longitud)
-        {
-            Output_File << Corregir(Upload_File_Line, Name_Scheme) << std::endl;
+         if (Vacio > longitud)
+         {
+             Output_File << Corregir(Upload_File_Line, Name_Scheme) << std::endl;
 
-            First_Line(Directory_out, std::to_string(Vacio - longitud));
-        }
-        else
-        {
-            i++;
-        }
-    }
+             First_Line(Directory_out, std::to_string(Vacio - longitud));
+         }
+         else
+         {
+             i++;
+         }
+     }*/
 
-    /*int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv"), contador = 0;
+    int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv"), contador = 0;
 
     bool continuarIteraciones = true;
 
@@ -459,7 +457,6 @@ void Records_Manager::Cargar(std::string Name_Disk)
 
                         while (getline(Upload_File, Upload_File_Line))
                         {
-
                             int longitud = static_cast<int>(Upload_File_Line.length());
 
                             int Vacio = RemainCapacity(Directory_File);
@@ -478,17 +475,19 @@ void Records_Manager::Cargar(std::string Name_Disk)
                         }
                         if (contador == num)
                         {
+
                             continuarIteraciones = false;
                         }
                     }
                 }
             }
         }
-    }*/
+    }
 
     Upload_File.close();
+    return Name_Scheme;
 }
-
+/*
 void Records_Manager::Cargar1(std::string Name_Disk)
 {
     std::string Upload_File_Name, Name_Scheme;
@@ -653,7 +652,7 @@ void Records_Manager::Cargarn(std::string Name_Disk)
 
     Upload_File.close();
 }
-
+*/
 std::string Records_Manager::Erase_Blanks(std::string cadena)
 {
     std::string resultado;
@@ -711,6 +710,35 @@ int encontrarTercerNumeral(const std::string &cadena)
     }
 
     return static_cast<int>(posTercero);
+}
+
+int encontrar4Numeral(const std::string &cadena)
+{
+    size_t posPrimero = cadena.find_first_of('#');
+    if (posPrimero == std::string::npos)
+    {
+        return -1;
+    }
+
+    size_t posSegundo = cadena.find_first_of('#', posPrimero + 1);
+    if (posSegundo == std::string::npos)
+    {
+        return -1;
+    }
+
+    size_t posTercero = cadena.find_first_of('#', posSegundo + 1);
+    if (posTercero == std::string::npos)
+    {
+        return -1;
+    }
+
+    size_t posCuarto = cadena.find_first_of('#', posTercero + 1);
+    if (posCuarto == std::string::npos)
+    {
+        return -1;
+    }
+
+    return static_cast<int>(posCuarto);
 }
 
 void Records_Manager::Select_1(std::string NDisco)
@@ -841,9 +869,9 @@ void Records_Manager::Select_1(std::string NDisco)
     }
 }
 
-std::string Records_Manager::Corregir(std::string linea, std::string NTabla) //, int contador, std::string dir, int num_Registros)
+std::string Records_Manager::Corregir(std::string linea, std::string NTabla, int contador, std::string dir, int num_Registros)
 {
-    /*size_t pos = 0;
+    size_t pos = 0;
     std::string res, esq;
     std::ifstream esquemas(fs::current_path().string() + "/Esquemas.txt");
     std::getline(esquemas, esq);
@@ -855,11 +883,10 @@ std::string Records_Manager::Corregir(std::string linea, std::string NTabla) //,
     ss << std::setw(std::to_string(num_Registros).length()) << std::setfill(' ') << contador;
     id_Reg = ss.str();
 
-    res += dir + '#' + id_Reg + "#" + NTabla + "#";*/
+    res += dir + '#' + id_Reg + "#" + NTabla + "#";
 
     int mult = 1;
-    bool str = false;
-    std::string segmento, res;
+
     res += NTabla + "#";
     for (size_t i = 0; i < linea.length(); i++)
     {
@@ -983,18 +1010,154 @@ std::string Records_Manager::get_NomAtributos(std::string tabla)
     return nombres;
 }
 
-void Records_Manager::Select_(std::string NDisco)
+std::string trim(const std::string &str)
+{
+    size_t start = 0;
+    while (start < str.size() && std::isspace(str[start]))
+        ++start;
+    size_t end = str.size();
+    while (end > start && std::isspace(str[end - 1]))
+        --end;
+    return str.substr(start, end - start);
+}
+
+std::string obtenerEntreHash(const std::string &linea, int numero)
+{
+    std::vector<size_t> posiciones = {static_cast<size_t>(-1)}; // Simula un '#' al inicio
+
+    for (size_t i = 0; i < linea.length(); ++i)
+    {
+        if (linea[i] == '#')
+        {
+            posiciones.push_back(i);
+        }
+    }
+    posiciones.push_back(linea.length()); // Agrega el final como último límite
+
+    // Verificar si el número es válido
+    if (numero < 1 || numero >= posiciones.size())
+    {
+        return "";
+    }
+
+    size_t inicio = posiciones[numero - 1] + 1;
+    size_t fin = posiciones[numero];
+    return trim(linea.substr(inicio, fin - inicio));
+}
+
+void Print_Name_Atribute(const std::string &entrada)
+{
+    size_t pos = 0;
+    int campo = 0;
+    std::string nombre;
+    int ancho = 0;
+
+    while (pos < entrada.length())
+    {
+        size_t siguiente = entrada.find('#', pos);
+        std::string valor = entrada.substr(pos, siguiente - pos);
+
+        if ((campo - 1) % 3 == 0 && campo > 0)
+            nombre = valor;
+        if ((campo - 1) % 3 == 2 && campo > 0)
+        {
+            ancho = std::stoi(valor);
+            std::cout << nombre << std::string(std::max(0, ancho - (int)nombre.length()), ' ') << " ";
+        }
+
+        pos = (siguiente == std::string::npos) ? entrada.length() : siguiente + 1;
+        campo++;
+    }
+    std::cout << std::endl;
+}
+
+void imprimirDatosFormateados(const std::string &esquema, const std::string &registro)
+{
+    std::string nombres[100];
+    int longitudes[100];
+    int n = 0;
+
+    // Extraer nombres de atributos y almacenar su longitud
+    size_t p = 0;
+    int campoEsquema = 0;
+    while (p < esquema.length())
+    {
+        size_t siguiente = esquema.find('#', p);
+        std::string valor = esquema.substr(p, siguiente - p);
+
+        if ((campoEsquema - 1) % 3 == 0 && campoEsquema > 0)
+        {
+            nombres[n] = valor;
+            longitudes[n] = valor.length(); // Guardar el largo del nombre del atributo
+            n++;
+        }
+
+        p = (siguiente == std::string::npos) ? esquema.length() : siguiente + 1;
+        campoEsquema++;
+    }
+
+    // Encontrar el inicio de datos en el registro (después del 4to '#')
+    size_t inicioDatos = 0;
+    int numHash = 0;
+    for (size_t i = 0; i < registro.length(); ++i)
+    {
+        if (registro[i] == '#')
+        {
+            numHash++;
+            if (numHash == 4)
+            {
+                inicioDatos = i + 1;
+                break;
+            }
+        }
+    }
+
+    std::string datos = registro.substr(inicioDatos);
+    size_t cursor = 0;
+
+    // Procesar cada atributo y su correspondiente valor del registro
+    for (int i = 0; i < n; ++i)
+    {
+        int ancho = longitudes[i]; // Obtener el largo del nombre de atributo
+        std::string valor = datos.substr(cursor, ancho);
+        cursor += ancho;
+
+        // Eliminar espacios a la derecha
+        size_t end = valor.find_last_not_of(' ');
+        valor = (end == std::string::npos) ? "" : valor.substr(0, end + 1);
+
+        // Si el valor está vacío o tiene solo comas, rellenamos con espacios
+        if (valor.empty() || valor == ",")
+        {
+            valor = std::string(ancho, ' ');
+        }
+
+        // Rellenar con espacios a la izquierda si es necesario, tomando el largo del nombre del atributo
+        int faltan = ancho - valor.length();
+        if (faltan > 0)
+            std::cout << std::string(faltan, ' ');
+        std::cout << valor;
+    }
+
+    // Imprimir el resto del registro (los datos después del último atributo procesado)
+    std::cout << datos.substr(cursor) << std::endl;
+}
+
+void Records_Manager::Select_all(std::string NDisco)
 {
     std::string atributo, signo, nEsquema, esquema, nomatributos, segmento, valor;
     int j = 0;
 
     std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
+    std::cin.ignore();
     getline(std::cin, nEsquema);
 
     int sumatoria = Max(get_Esquema(nEsquema), 1);
     std::string linea, palabra;
     int *Info = Info_Disk(NDisco);
     bool continuarIteraciones = true;
+
+    Print_Name_Atribute(get_Esquema(nEsquema));
     for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
     {
         std::string dirPlato = fs::current_path().string() + "/" + NDisco + "/Plato_" + std::to_string(i);
@@ -1015,20 +1178,10 @@ void Records_Manager::Select_(std::string NDisco)
                     while (getline(Select, linea))
                     {
 
-                        if (linea.length() > sumatoria)
+                        if (obtenerEntreHash(linea, 3) == nEsquema)
                         {
-                            if (IsRecord_inTable(linea, nEsquema))
-                            {
-                                std::string select;
-                                select += "Plato " + std::to_string(Info[i - 1]) + ", Superficie " + std::to_string(Info[j - 1]) + ", Pista " + std::to_string(Info[k - 1]) + ", Sector " + std::to_string(Info[l - 1]) + ":";
-                                int offsett = encontrarTercerNumeral(linea);
-                                for (size_t i = offsett + 1; i < linea.length(); i++)
-                                {
-                                    select += linea[i];
-                                }
 
-                                std::cout << select << std::endl;
-                            }
+                            imprimirDatosFormateados(get_Esquema(nEsquema), linea);
                         }
                     }
                 }
@@ -1039,101 +1192,59 @@ void Records_Manager::Select_(std::string NDisco)
 
 void Records_Manager::Select_(std::string nEsquema, std::string atributo, std::string signo, int valor, std::string NDisco)
 {
-    std::string esquema, nomatributos, segmento;
-    int j = 0;
-
-    int numatributos = get_NumAtributos(nEsquema);
-    std::string *enteros = new std::string[numatributos];
-
-    esquema = get_Esquema(nEsquema);
-    nomatributos = get_NomAtributos(esquema);
-
+    std::string esquema = get_Esquema(nEsquema);
+    std::string nomatributos = get_NomAtributos(esquema);
     std::istringstream ss(nomatributos);
+    std::string segmento;
     int offset = 0, sumatoria = 0;
 
+    // Buscar índice del atributo
     while (std::getline(ss, segmento, ','))
     {
         if (segmento == atributo)
-        {
             break;
-        }
         offset++;
     }
 
-    for (int i = 0; i < offset; i++)
-    {
-        sumatoria += Max(get_Esquema(nEsquema), i + 1);
-    }
+    // Calcular desplazamiento en caracteres
+    for (int i = 0; i < offset; ++i)
+        sumatoria += Max(esquema, i + 1);
 
-    std::string linea, palabrastr;
-    int palabra;
-    int *Info = Info_Disk(NDisco);
+    int *Info = Info_Disk(NDisco); // Devuelve {platos, superficies, pistas, sectores}
     for (int i = 1; i <= Info[0]; ++i)
     {
-        std::string dirPlato = fs::current_path().string() + "/" + NDisco + "/Plato_" + std::to_string(i);
-
         for (int j = 1; j <= Info[1]; ++j)
         {
-            std::string dirSuperficie = dirPlato + "/Superficie_" + std::to_string(j);
-
             for (int k = 1; k <= Info[2]; ++k)
             {
-                std::string dirPista = dirSuperficie + "/Pista_" + std::to_string(k);
-
-                for (int l = 1; l <= Info[3]; l++)
+                for (int l = 1; l <= Info[3]; ++l)
                 {
-                    std::string dirSector = dirPista + "/Sector_" + std::to_string(l);
-                    std::string nomArchivo = dirSector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-                    std::ifstream Select(nomArchivo);
-                    while (getline(Select, linea))
+                    std::string ruta = fs::current_path().string() + "/" + NDisco + "/Plato_" + std::to_string(i) + "/Superficie_" + std::to_string(j) +
+                                       "/Pista_" + std::to_string(k) + "/Sector_" + std::to_string(l) + "/" +
+                                       std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
+                    std::ifstream archivo(ruta);
+                    std::string linea;
+                    while (getline(archivo, linea))
                     {
 
-                        if (linea.length() > sumatoria)
-                        {
-                            if (IsRecord_inTable(linea, nEsquema))
-                            {
-                                int offsett = sumatoria + encontrarTercerNumeral(linea);
-                                for (size_t i = offsett + 1; i <= offsett + Max(get_Esquema(nEsquema), offset + 1); i++)
-                                {
-                                    palabrastr += linea[i];
-                                }
-                                palabrastr = Erase_Blanks(palabrastr);
-                                palabra = std::stoi(palabrastr);
-                                if (signo == "<")
-                                {
-                                    if (palabra == valor)
-                                    {
-                                        std::cout << linea << std::endl;
-                                    }
-                                }
-                                else if (signo == ">")
-                                {
-                                    if (palabra > valor)
-                                    {
-                                        std::cout << linea << std::endl;
-                                    }
-                                }
-                                else if (signo == "<=")
-                                {
-                                    if (palabra <= valor)
-                                    {
-                                        std::cout << linea << std::endl;
-                                    }
-                                }
-                                else if (signo == ">=")
-                                {
-                                    if (palabra >= valor)
-                                    {
-                                        std::cout << linea << std::endl;
-                                    }
-                                }
-
-                                palabrastr.clear();
-                            }
-                        }
-                        else
-                        {
+                        if (!IsRecord_inTable(linea, nEsquema))
                             continue;
+
+                        int offsetReal = sumatoria + encontrar4Numeral(linea) + 1;
+                        std::string valstr = linea.substr(offsetReal, Max(esquema, offset + 1));
+                        valstr = Erase_Blanks(valstr);
+                        if (valstr.empty() || !std::all_of(valstr.begin(), valstr.end(), ::isdigit))
+                            continue;
+
+                        int val = std::stoi(valstr);
+
+                        if ((signo == "<" && val < valor) ||
+                            (signo == ">" && val > valor) ||
+                            (signo == "<=" && val <= valor) ||
+                            (signo == ">=" && val >= valor) ||
+                            (signo == "==" && val == valor))
+                        {
+                            std::cout << linea << "\n";
                         }
                     }
                 }

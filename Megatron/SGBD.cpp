@@ -34,7 +34,7 @@ void SGBD::Cargar()
     std::string name_disk;
     std::cout << "Ingrese el Disco al que quiere Cargar el documento: ";
     std::cin >>name_disk;
-    Records.Cargar(name_disk);
+    std::string Table = Records.Cargar(name_disk);
     int j = 0;
     for (size_t i = 0; i < Discos.size(); i++)
     {
@@ -43,6 +43,30 @@ void SGBD::Cargar()
             j = i;
         }
     }
-    Discos[j].Upload_Blocks();
+    Discos[j].Upload_Blocks(Table);
     
+}
+
+void SGBD::Select(){
+    std::string name_disk;
+    std::cout << "Ingrese el Disco de donde quiere seleccionar la Tabla: ";
+    std::cin >> name_disk;
+    Records.Select_all(name_disk);
+}
+
+void SGBD::Select_Discriminado(){
+    std::string name_disk, name_atribute, sign, name_squeme;
+    int valor;
+    std::cout << "Ingrese el Disco de donde quiere seleccionar la Tabla: ";
+    std::cin >> name_disk;
+    std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
+    std::cin >> name_squeme;
+    std::cout << "Ingrese el Atributo a seleccionar: ";
+    std::cin >> name_atribute;
+    std::cout << "Ingrese signo con el que seleccionara el atributo ( >, <, =) ";
+    std::cin >> sign;
+    std::cout << "Ingrese el valor que desea seleccionar ";
+    std::cin >> valor;
+    Records.Select_(name_squeme,name_atribute,sign,valor,name_disk);
+
 }
