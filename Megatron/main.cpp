@@ -20,8 +20,8 @@ int main()
     Disco A("Disco_1",5,2,3,4,1500,4);
     DB.Cargar("Disco_1");*/
     SGBD A;
-    //A.Create_Disk();
-    //A.Cargar();
+    A.Create_Disk();
+    A.Cargar();
     //A.Cargar();
     A.Select_Discriminado();
 
