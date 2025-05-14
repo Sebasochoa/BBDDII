@@ -6,306 +6,76 @@
 #include <algorithm>
 #include <cctype>
 #include <sstream>
-#include "Disco.h"
-#include "Records_Manager.h"
-#include <vector>
 #include <filesystem>
 #include <array>
+#include <iomanip>
+#include "Disco.h"
+#include "Records_Manager.h"
 
 namespace fs = std::filesystem;
 
-Records_Manager::Records_Manager()
+// =============================================
+// Constructores y destructores
+// =============================================
+
+Records_Manager::Records_Manager() {}
+Records_Manager::~Records_Manager() {}
+
+// =============================================
+// Funciones de utilidad
+// =============================================
+
+bool Records_Manager::Int(const std::string &texto)
 {
-}
-
-Records_Manager::~Records_Manager()
-{
-}
-
-int Records_Manager::get_NumAtributos(std::string esquema)
-{
-    std::string linea;
-    std::ifstream archivo(fs::current_path().string() + "/Esquemas.txt");
-    size_t pos = 0;
-    int contador = 0;
-    bool encontro = false;
-    if (archivo.is_open())
-    {
-        while (std::getline(archivo, linea))
-        {
-
-            if (linea.find(esquema) != std::string::npos)
-            {
-                encontro = true;
-                break;
-            }
-        }
-        archivo.close();
-
-        if (!encontro)
-        {
-            return 0;
-        }
-    }
-    while ((pos = linea.find('#', pos)) != std::string::npos)
-    {
-        ++contador;
-        ++pos;
-    }
-    contador = (contador - 1) / 3;
-    return contador;
-}
-
-bool Records_Manager::Int(std::string texto)
-{
-    if (!texto.empty())
-    {
-        std::istringstream ss(texto);
-        int valor;
-        return ss >> valor && ss.eof();
-    }
-    else
-    {
+    if (texto.empty())
         return false;
-    }
+    std::istringstream ss(texto);
+    int valor;
+    return ss >> valor && ss.eof();
 }
 
-bool Records_Manager::Float(std::string texto)
+bool Records_Manager::Float(const std::string &texto)
 {
     std::istringstream ss(texto);
     float valor;
     return ss >> valor && ss.eof();
 }
 
-int *Records_Manager::Info_Disk(std::string Name_Disk)
+std::string Records_Manager::Erase_Blanks(const std::string &cadena)
 {
-    std::string Directory_Disk = fs::current_path().string() + "/" + Name_Disk;
-
-    int Num_Plates = 0, Num_Surfaces = 0, Num_Tracks = 0, Num_Sectors = 0;
-
-    for (const auto &Plate : fs::directory_iterator(Directory_Disk))
+    std::string resultado;
+    for (char caracter : cadena)
     {
-        if (Plate.is_directory())
+        if (!isspace(caracter) && caracter != ' ')
         {
-            Num_Plates++;
+            resultado += caracter;
         }
     }
-
-    for (const auto &Plate : fs::directory_iterator(Directory_Disk))
-    {
-        if (Plate.is_directory())
-        {
-            for (const auto &Surfaces : fs::directory_iterator(Plate.path()))
-            {
-                if (Surfaces.is_directory())
-                {
-                    Num_Surfaces++;
-                }
-            }
-        }
-    }
-
-    for (const auto &Plate : fs::directory_iterator(Directory_Disk))
-    {
-        if (Plate.is_directory())
-        {
-            for (const auto &Surfaces : fs::directory_iterator(Plate.path()))
-            {
-                if (Surfaces.is_directory())
-                {
-                    for (const auto &Tracks : fs::directory_iterator(Surfaces.path()))
-                    {
-                        if (Tracks.is_directory())
-                        {
-                            Num_Tracks++;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    for (const auto &Plate : fs::directory_iterator(Directory_Disk))
-    {
-        if (Plate.is_directory())
-        {
-            for (const auto &Surfaces : fs::directory_iterator(Plate.path()))
-            {
-                if (Surfaces.is_directory())
-                {
-                    for (const auto &Tracks : fs::directory_iterator(Surfaces.path()))
-                    {
-                        if (Tracks.is_directory())
-                        {
-                            for (const auto &Sectors : fs::directory_iterator(Tracks.path()))
-                            {
-                                if (Sectors.is_directory())
-                                {
-                                    Num_Sectors++;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    int *Directory = new int[4];
-
-    Num_Sectors /= Num_Tracks;
-    Num_Tracks /= Num_Surfaces;
-    Num_Surfaces /= Num_Plates;
-
-    Directory[0] = Num_Plates;
-    Directory[1] = Num_Surfaces;
-    Directory[2] = Num_Tracks;
-    Directory[3] = Num_Sectors;
-
-    return Directory;
+    return resultado;
 }
 
-int Records_Manager::RemainCapacity(std::string Archivo)
+std::string Records_Manager::LlenarI(const std::string &linea, int cant)
 {
-    std::ifstream archivo(Archivo);
-    std::string linea, segmento;
-    getline(archivo, linea);
-    for (size_t i = 0; i < linea.size(); i++)
-    {
-        if (linea[i] != '-')
-        {
-            segmento += linea[i];
-        }
-        else
-        {
-            break;
-        }
-    }
-    std::istringstream ss(segmento);
-    int valor;
-    ss >> valor;
-    return valor;
+    std::string res;
+    size_t resto = cant - linea.length();
+    res.append(resto, ' ');
+    res += linea;
+    return res;
 }
 
-void Records_Manager::First_Line(std::string Directory_File, std::string Replace_Line)
-{
-    std::ifstream Source_File(Directory_File);
+// =============================================
+// Manejo de esquemas
+// =============================================
 
-    std::string Content, Source_File_Line;
-    while (std::getline(Source_File, Source_File_Line))
-    {
-        Content += Source_File_Line + "\n";
-    }
-    Source_File.close();
-
-    size_t Start_Position = Content.find('\n');
-
-    Content.replace(0, Start_Position, Replace_Line);
-
-    std::ofstream Output_File(Directory_File);
-
-    Output_File << Content;
-    Output_File.close();
-}
-
-int Records_Manager::NumRegistros(std::string DirArchivo)
-{
-    std::ifstream archivo(DirArchivo);
-    std::string linea;
-    int Num = 0;
-    while (getline(archivo, linea))
-    {
-        Num++;
-    }
-    return Num - 1;
-}
-
-std::string *Records_Manager::split(std::string &s, char delimiter, int &numTokens)
-{
-    numTokens = 1;
-    bool inQuotes = false;
-    for (char c : s)
-    {
-        if (c == '"')
-        {
-            inQuotes = !inQuotes;
-        }
-        else if (c == delimiter && !inQuotes)
-        {
-            numTokens++;
-        }
-    }
-
-    std::string *tokens = new std::string[numTokens];
-    std::string token;
-    int index = 0;
-    inQuotes = false;
-
-    for (char c : s)
-    {
-        if (c == '"')
-        {
-            inQuotes = !inQuotes;
-        }
-        else if (c == delimiter && !inQuotes)
-        {
-            tokens[index++] = token;
-            token.clear();
-            continue;
-        }
-        token += c;
-    }
-    tokens[index] = token;
-
-    return tokens;
-}
-
-int *Records_Manager::findLongestEntryLengths(std::string &filename, int &numAttributes)
-{
-    std::ifstream file(filename);
-    std::string line;
-    int *maxAttributeLengths = nullptr;
-    numAttributes = 0;
-    std::getline(file, line);
-
-    while (std::getline(file, line))
-    {
-        int numTokens = 0;
-        std::string *attributes = split(line, ',', numTokens);
-
-        if (maxAttributeLengths == nullptr)
-        {
-            numAttributes = numTokens;
-            maxAttributeLengths = new int[numAttributes];
-            for (int i = 0; i < numAttributes; ++i)
-            {
-                maxAttributeLengths[i] = 0;
-            }
-        }
-
-        for (int i = 0; i < numTokens; ++i)
-        {
-            maxAttributeLengths[i] = std::max(maxAttributeLengths[i], static_cast<int>(attributes[i].length()));
-        }
-
-        delete[] attributes;
-    }
-
-    file.close();
-    return maxAttributeLengths;
-}
-
-bool Records_Manager::Check_Schemes(std::string Name_Scheme)
+bool Records_Manager::Check_Schemes(const std::string &Name_Scheme)
 {
     std::ifstream File_Schemes(fs::current_path().string() + "/Esquemas.txt");
-
     std::string Line_Scheme;
 
     while (getline(File_Schemes, Line_Scheme))
     {
-        std::string Segment;
         std::istringstream ss(Line_Scheme);
-
+        std::string Segment;
         while (getline(ss, Segment, '#'))
         {
             if (Segment == Name_Scheme)
@@ -317,7 +87,7 @@ bool Records_Manager::Check_Schemes(std::string Name_Scheme)
     return false;
 }
 
-void Records_Manager::Create_Scheme(std::string Name_Scheme)
+void Records_Manager::Create_Scheme(const std::string &Name_Scheme)
 {
     std::string Scheme = Name_Scheme + "#";
 
@@ -382,423 +152,48 @@ void Records_Manager::Create_Scheme(std::string Name_Scheme)
     Scheme_File.close();
 }
 
-std::string Records_Manager::Cargar(std::string Name_Disk)
-{
-    std::string Upload_File_Name, Name_Scheme;
-    std::cin.ignore();
-    std::cout << "Ingrese el nombre del archivo a cargar: ";
-    getline(std::cin, Upload_File_Name);
-
-    std::cout << "Ingrese nombre a su Relacion: ";
-    getline(std::cin, Name_Scheme);
-
-    if (!Check_Schemes(Name_Scheme))
-    {
-        Create_Scheme(Name_Scheme);
-    }
-
-    std::string Upload_File_Line, Trash;
-
-    int *Info = Info_Disk(Name_Disk);
-
-    std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
-    getline(Upload_File, Trash);
-
-    int i = 1;
-    
-    std::string Directory_File = fs::current_path().string() + "/" + Name_Disk + "/Bloques"; 
-
-    int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv"), contador = 0;
-
-    bool continuarIteraciones = true;
-
-    for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
-    {
-        std::string Directory_Plate = fs::current_path().string() + "/" + Name_Disk + "/Plato_" + std::to_string(i);
-
-        for (int j = 1; j <= Info[1] && continuarIteraciones; ++j)
-        {
-            std::string Directory_Surface = Directory_Plate + "/Superficie_" + std::to_string(j);
-
-            for (int k = 1; k <= Info[2] && continuarIteraciones; ++k)
-            {
-
-                std::string Directory_Track = Directory_Surface + "/Pista_" + std::to_string(k);
-
-                for (int l = 1; l <= Info[3] && continuarIteraciones; l++)
-                {
-                    std::string Directory_Sector = Directory_Track + "/Sector_" + std::to_string(l);
-
-                    std::string Directory_File = Directory_Sector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-
-                    std::ofstream txt(Directory_File, std::ios::app);
-                    if (Upload_File.is_open())
-                    {
-
-                        while (getline(Upload_File, Upload_File_Line))
-                        {
-                            int longitud = static_cast<int>(Upload_File_Line.length());
-
-                            int Vacio = RemainCapacity(Directory_File);
-
-                            if (Vacio > longitud)
-                            {
-                                contador++;
-                                txt << Corregir(Upload_File_Line, Name_Scheme, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), num) << std::endl;
-
-                                First_Line(Directory_File, std::to_string(Vacio - longitud));
-                            }
-                            else
-                            {
-                                break;
-                            }
-                        }
-                        if (contador == num)
-                        {
-
-                            continuarIteraciones = false;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Upload_File.close();
-    return Name_Scheme;
-}
-
-std::string Records_Manager::Erase_Blanks(std::string cadena)
-{
-    std::string resultado;
-
-    for (char caracter : cadena)
-    {
-        if (!isspace(caracter) || caracter != ' ')
-        {
-            resultado += caracter;
-        }
-    }
-
-    return resultado;
-}
-
-bool Records_Manager::IsRecord_inTable(std::string linea, std::string NTabla)
-{
-
-    size_t posInicio = linea.find_first_of('#', linea.find_first_of('#') + 1);
-    if (posInicio == std::string::npos)
-    {
-        return false;
-    }
-
-    size_t posFinal = linea.find_first_of('#', posInicio + 1);
-    if (posFinal == std::string::npos)
-    {
-        return false;
-    }
-
-    std::string segmento = linea.substr(posInicio + 1, posFinal - posInicio - 1);
-
-    return segmento == NTabla;
-}
-
-// Hacerlo con cualquier numeral
-int encontrarTercerNumeral(const std::string &cadena)
-{
-    size_t posPrimero = cadena.find_first_of('#');
-    if (posPrimero == std::string::npos)
-    {
-        return -1;
-    }
-
-    size_t posSegundo = cadena.find_first_of('#', posPrimero + 1);
-    if (posSegundo == std::string::npos)
-    {
-        return -1;
-    }
-
-    size_t posTercero = cadena.find_first_of('#', posSegundo + 1);
-    if (posTercero == std::string::npos)
-    {
-        return -1;
-    }
-
-    return static_cast<int>(posTercero);
-}
-
-int encontrar4Numeral(const std::string &cadena)
-{
-    size_t posPrimero = cadena.find_first_of('#');
-    if (posPrimero == std::string::npos)
-    {
-        return -1;
-    }
-
-    size_t posSegundo = cadena.find_first_of('#', posPrimero + 1);
-    if (posSegundo == std::string::npos)
-    {
-        return -1;
-    }
-
-    size_t posTercero = cadena.find_first_of('#', posSegundo + 1);
-    if (posTercero == std::string::npos)
-    {
-        return -1;
-    }
-
-    size_t posCuarto = cadena.find_first_of('#', posTercero + 1);
-    if (posCuarto == std::string::npos)
-    {
-        return -1;
-    }
-
-    return static_cast<int>(posCuarto);
-}
-
-void Records_Manager::Select_1(std::string NDisco)
-{
-
-    std::string atributo, signo, nEsquema, esquema, nomatributos, segmento, valor;
-    int j = 0;
-
-    std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
-    getline(std::cin, nEsquema);
-
-    int numatributos = get_NumAtributos(nEsquema);
-    std::string *enteros = new std::string[numatributos];
-
-    esquema = get_Esquema(nEsquema);
-    nomatributos = get_NomAtributos(esquema);
-
-    for (size_t i = 0; i < nomatributos.length(); i++)
-    {
-
-        if (nomatributos[i] == ',')
-        {
-            if (j < numatributos)
-            {
-                enteros[j] = segmento;
-                segmento.clear();
-                j++;
-            }
-        }
-        else
-        {
-            segmento += nomatributos[i];
-        }
-    }
-    int opc = 999999;
-    std::cout << "Ingrese el atributo a seleccionar: \n";
-    for (int i = 0; i < numatributos; i++)
-    {
-
-        std::cout << i + 1 << ". " << enteros[i] << std::endl;
-    }
-
-    while (opc > numatributos + 1)
-    {
-        std::cout << "Ingrese una opcion valida: ";
-        std::cin >> opc;
-    }
-    atributo = enteros[opc - 1];
-    opc = 0;
-    signo = '=';
-    std::cout << "Ingrese la comparacion: ";
-    std::cin >> valor;
-
-    std::istringstream ss(nomatributos);
-    int offset = 0, sumatoria = 0;
-
-    while (std::getline(ss, segmento, ','))
-    {
-        if (segmento == atributo)
-        {
-            break;
-        }
-        offset++;
-    }
-
-    for (int i = 0; i < offset; i++)
-    {
-        sumatoria += Max(get_Esquema(nEsquema), i + 1);
-    }
-
-    std::string linea, palabra;
-    int *Info = Info_Disk(NDisco);
-    bool continuarIteraciones = true;
-    for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
-    {
-        std::string dirPlato = fs::current_path().string() + "/" + NDisco + "/Plato_" + std::to_string(i);
-
-        for (int j = 1; j <= Info[1] && continuarIteraciones; ++j)
-        {
-            std::string dirSuperficie = dirPlato + "/Superficie_" + std::to_string(j);
-
-            for (int k = 1; k <= Info[2] && continuarIteraciones; ++k)
-            {
-                std::string dirPista = dirSuperficie + "/Pista_" + std::to_string(k);
-
-                for (int l = 1; l <= Info[3] && continuarIteraciones; l++)
-                {
-                    std::string dirSector = dirPista + "/Sector_" + std::to_string(l);
-                    std::string nomArchivo = dirSector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-                    std::ifstream Select(nomArchivo);
-                    while (getline(Select, linea))
-                    {
-
-                        if (linea.length() > sumatoria)
-                        {
-                            if (IsRecord_inTable(linea, nEsquema))
-                            {
-                                int offsett = sumatoria + encontrarTercerNumeral(linea);
-                                for (size_t i = offsett + 1; i <= offsett + Max(get_Esquema(nEsquema), offset + 1); i++)
-                                {
-                                    palabra += linea[i];
-                                }
-                                palabra = Erase_Blanks(palabra);
-                                if (palabra == valor)
-                                {
-                                    std::string select;
-                                    select += "Plato " + std::to_string(Info[i]) + ", Superficie " + std::to_string(Info[j]) + ", Pista " + std::to_string(Info[k]) + ", Sector " + std::to_string(Info[l]) + ":";
-                                    for (size_t i = offsett + 1; i < linea.length(); i++)
-                                    {
-                                        select += linea[i];
-                                    }
-
-                                    std::cout << select << std::endl;
-                                    continuarIteraciones = false;
-                                }
-
-                                palabra.clear();
-                            }
-                        }
-                        else
-                        {
-                            continue;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-std::string Records_Manager::Corregir(std::string linea, std::string NTabla, int contador, std::string dir, int num_Registros)
-{
-    size_t pos = 0;
-    std::string res, esq;
-    std::ifstream esquemas(fs::current_path().string() + "/Esquemas.txt");
-    std::getline(esquemas, esq);
-
-    bool str = false;
-    std::string segmento, id_Reg;
-
-    std::stringstream ss;
-    ss << std::setw(std::to_string(num_Registros).length()) << std::setfill(' ') << contador;
-    id_Reg = ss.str();
-
-    res += dir + '#' + id_Reg + "#" + NTabla + "#";
-
-    int mult = 1;
-
-    res += NTabla + "#";
-    for (size_t i = 0; i < linea.length(); i++)
-    {
-        if (linea[i] == '"')
-        {
-            str = !str;
-        }
-        else if (linea[i] == ',' && !str)
-        {
-            res += LlenarI(segmento, Max(get_Esquema(NTabla), mult));
-            segmento.clear();
-            mult++;
-        }
-        else
-        {
-            segmento += linea[i];
-        }
-    }
-    res += LlenarI(segmento, Max(get_Esquema(NTabla), mult));
-    return res;
-}
-
-std::string Records_Manager::LlenarI(std::string linea, int cant)
-{
-    std::string res;
-    size_t resto = cant - linea.length();
-    for (size_t i = 0; i < resto; i++)
-    {
-        res += " ";
-    }
-    res += linea;
-    return res;
-}
-
-std::string Records_Manager::get_Esquema(std::string tabla)
+int Records_Manager::get_NumAtributos(const std::string &esquema)
 {
     std::string linea;
     std::ifstream archivo(fs::current_path().string() + "/Esquemas.txt");
 
-    bool encontro = false;
+    if (!archivo.is_open())
+        return 0;
+
+    while (std::getline(archivo, linea))
+    {
+        if (linea.find(esquema) != std::string::npos)
+        {
+            archivo.close();
+            return (std::count(linea.begin(), linea.end(), '#') - 1) / 3;
+        }
+    }
+    archivo.close();
+    return 0;
+}
+
+std::string Records_Manager::get_Esquema(const std::string &tabla)
+{
+    std::string linea;
+    std::ifstream archivo(fs::current_path().string() + "/Esquemas.txt");
+
     if (archivo.is_open())
     {
         while (std::getline(archivo, linea))
         {
-
             if (linea.find(tabla) != std::string::npos)
             {
-                encontro = true;
-                break;
+                archivo.close();
+                return linea;
             }
         }
         archivo.close();
-
-        if (!encontro)
-        {
-            return 0;
-        }
     }
-    return linea;
+    return "";
 }
 
-int Records_Manager::Max(std::string esq, int mult)
+std::string Records_Manager::get_NomAtributos(const std::string &tabla)
 {
-    size_t pos = 0;
-    int contador = 0, max = 0;
-    std::string numero_str;
-
-    while ((pos = esq.find('#', pos)) != std::string::npos)
-    {
-        ++contador;
-
-        if (contador == 3 * mult)
-        {
-            pos++;
-            while (pos < esq.length() && esq[pos] != '#')
-            {
-                numero_str += esq[pos];
-                pos++;
-            }
-            break;
-        }
-        else
-        {
-            pos++;
-        }
-    }
-
-    if (!numero_str.empty())
-    {
-        max = std::stoi(numero_str);
-    }
-    return max;
-}
-
-std::string Records_Manager::get_NomAtributos(std::string tabla)
-{
-
     size_t pos = 0;
     int contador = 2;
     std::string nombres;
@@ -825,207 +220,416 @@ std::string Records_Manager::get_NomAtributos(std::string tabla)
     return nombres;
 }
 
-std::string trim(const std::string &str)
-{
-    size_t start = 0;
-    while (start < str.size() && std::isspace(str[start]))
-        ++start;
-    size_t end = str.size();
-    while (end > start && std::isspace(str[end - 1]))
-        --end;
-    return str.substr(start, end - start);
-}
-
-std::string obtenerEntreHash(const std::string &linea, int numero)
-{
-    std::vector<size_t> posiciones = {static_cast<size_t>(-1)}; // Simula un '#' al inicio
-
-    for (size_t i = 0; i < linea.length(); ++i)
-    {
-        if (linea[i] == '#')
-        {
-            posiciones.push_back(i);
-        }
-    }
-    posiciones.push_back(linea.length()); // Agrega el final como último límite
-
-    // Verificar si el número es válido
-    if (numero < 1 || numero >= posiciones.size())
-    {
-        return "";
-    }
-
-    size_t inicio = posiciones[numero - 1] + 1;
-    size_t fin = posiciones[numero];
-    return trim(linea.substr(inicio, fin - inicio));
-}
-
-void Print_Name_Atribute(const std::string &entrada)
+int Records_Manager::Max(const std::string &esq, int mult)
 {
     size_t pos = 0;
-    int campo = 0;
-    std::string nombre;
-    int ancho = 0;
+    int contador = 0;
+    std::string numero_str;
 
-    while (pos < entrada.length())
+    while ((pos = esq.find('#', pos)) != std::string::npos)
     {
-        size_t siguiente = entrada.find('#', pos);
-        std::string valor = entrada.substr(pos, siguiente - pos);
-
-        if ((campo - 1) % 3 == 0 && campo > 0)
-            nombre = valor;
-        if ((campo - 1) % 3 == 2 && campo > 0)
+        ++contador;
+        if (contador == 3 * mult)
         {
-            ancho = std::stoi(valor);
-            std::cout << nombre << std::string(std::max(0, ancho - (int)nombre.length()), ' ') << " ";
+            pos++;
+            while (pos < esq.length() && esq[pos] != '#')
+            {
+                numero_str += esq[pos];
+                pos++;
+            }
+            break;
         }
-
-        pos = (siguiente == std::string::npos) ? entrada.length() : siguiente + 1;
-        campo++;
+        pos++;
     }
-    std::cout << std::endl;
+    return numero_str.empty() ? 0 : std::stoi(numero_str);
 }
 
-void imprimirDatosFormateados(const std::string &esquema, const std::string &registro)
+// =============================================
+// Manejo de disco y archivos
+// =============================================
+
+std::array<int, 4> Records_Manager::Info_Disk(const std::string &Name_Disk)
 {
-    std::string nombres[100];
-    int longitudes[100];
-    int n = 0;
+    namespace fs = std::filesystem;
+    std::string Directory_Disk = fs::current_path().string() + "/" + Name_Disk;
 
-    // Extraer nombres de atributos y almacenar su longitud
-    size_t p = 0;
-    int campoEsquema = 0;
-    while (p < esquema.length())
+    // Inicializar contadores
+    int Num_Plates = 0, Num_Surfaces = 0, Num_Tracks = 0, Num_Sectors = 0;
+
+    // Contar platos (directorios en el directorio raíz)
+    for (const auto &entry : fs::directory_iterator(Directory_Disk))
     {
-        size_t siguiente = esquema.find('#', p);
-        std::string valor = esquema.substr(p, siguiente - p);
-
-        if ((campoEsquema - 1) % 3 == 0 && campoEsquema > 0)
-        {
-            nombres[n] = valor;
-            longitudes[n] = valor.length(); // Guardar el largo del nombre del atributo
-            n++;
-        }
-
-        p = (siguiente == std::string::npos) ? esquema.length() : siguiente + 1;
-        campoEsquema++;
+        if (entry.is_directory())
+            Num_Plates++;
     }
 
-    // Encontrar el inicio de datos en el registro (después del 4to '#')
-    size_t inicioDatos = 0;
-    int numHash = 0;
-    for (size_t i = 0; i < registro.length(); ++i)
+    // Contar superficies (por cada plato)
+    for (const auto &plate : fs::directory_iterator(Directory_Disk))
     {
-        if (registro[i] == '#')
+        if (plate.is_directory())
         {
-            numHash++;
-            if (numHash == 4)
+            for (const auto &surface : fs::directory_iterator(plate.path()))
             {
-                inicioDatos = i + 1;
-                break;
+                if (surface.is_directory())
+                    Num_Surfaces++;
             }
         }
     }
 
-    std::string datos = registro.substr(inicioDatos);
-    size_t cursor = 0;
-
-    // Procesar cada atributo y su correspondiente valor del registro
-    for (int i = 0; i < n; ++i)
+    // Contar pistas (por cada superficie)
+    for (const auto &plate : fs::directory_iterator(Directory_Disk))
     {
-        int ancho = longitudes[i]; // Obtener el largo del nombre de atributo
-        std::string valor = datos.substr(cursor, ancho);
-        cursor += ancho;
-
-        // Eliminar espacios a la derecha
-        size_t end = valor.find_last_not_of(' ');
-        valor = (end == std::string::npos) ? "" : valor.substr(0, end + 1);
-
-        // Si el valor está vacío o tiene solo comas, rellenamos con espacios
-        if (valor.empty() || valor == ",")
+        if (plate.is_directory())
         {
-            valor = std::string(ancho, ' ');
+            for (const auto &surface : fs::directory_iterator(plate.path()))
+            {
+                if (surface.is_directory())
+                {
+                    for (const auto &track : fs::directory_iterator(surface.path()))
+                    {
+                        if (track.is_directory())
+                            Num_Tracks++;
+                    }
+                }
+            }
         }
-
-        // Rellenar con espacios a la izquierda si es necesario, tomando el largo del nombre del atributo
-        int faltan = ancho - valor.length();
-        if (faltan > 0)
-            std::cout << std::string(faltan, ' ');
-        std::cout << valor;
     }
 
-    // Imprimir el resto del registro (los datos después del último atributo procesado)
-    std::cout << datos.substr(cursor) << std::endl;
-}
-
-void Records_Manager::Select_all(std::string NDisco)
-{
-    std::string atributo, signo, nEsquema, esquema, nomatributos, segmento, valor;
-    int j = 0;
-
-    std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
-    std::cin.ignore();
-    getline(std::cin, nEsquema);
-
-    int sumatoria = Max(get_Esquema(nEsquema), 1);
-    std::string linea, palabra;
-    int *Info = Info_Disk(NDisco);
-    bool continuarIteraciones = true;
-
-    Print_Name_Atribute(get_Esquema(nEsquema));
-    for (int i = 1; i <= Info[0] && continuarIteraciones; ++i)
+    // Contar sectores (por cada pista)
+    for (const auto &plate : fs::directory_iterator(Directory_Disk))
     {
-        std::string dirPlato = fs::current_path().string() + "/" + NDisco + "/Plato_" + std::to_string(i);
-
-        for (int j = 1; j <= Info[1] && continuarIteraciones; ++j)
+        if (plate.is_directory())
         {
-            std::string dirSuperficie = dirPlato + "/Superficie_" + std::to_string(j);
-
-            for (int k = 1; k <= Info[2] && continuarIteraciones; ++k)
+            for (const auto &surface : fs::directory_iterator(plate.path()))
             {
-                std::string dirPista = dirSuperficie + "/Pista_" + std::to_string(k);
-
-                for (int l = 1; l <= Info[3] && continuarIteraciones; l++)
+                if (surface.is_directory())
                 {
-                    std::string dirSector = dirPista + "/Sector_" + std::to_string(l);
-                    std::string nomArchivo = dirSector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-                    std::ifstream Select(nomArchivo);
-                    while (getline(Select, linea))
+                    for (const auto &track : fs::directory_iterator(surface.path()))
                     {
-
-                        if (obtenerEntreHash(linea, 3) == nEsquema)
+                        if (track.is_directory())
                         {
-
-                            imprimirDatosFormateados(get_Esquema(nEsquema), linea);
+                            for (const auto &sector : fs::directory_iterator(track.path()))
+                            {
+                                if (sector.is_directory())
+                                    Num_Sectors++;
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    // Calcular promedios y devolver resultados
+    return {
+        Num_Plates,
+        Num_Surfaces / std::max(1, Num_Plates), // Evitar división por cero
+        Num_Tracks / std::max(1, Num_Surfaces),
+        Num_Sectors / std::max(1, Num_Tracks)};
 }
 
-void Records_Manager::Select_(std::string nEsquema, std::string atributo, std::string signo, int valor, std::string NDisco)
+int Records_Manager::RemainCapacity(const std::string &Archivo)
 {
-    std::string esquema = get_Esquema(nEsquema);
-    std::string nomatributos = get_NomAtributos(esquema);
-    std::istringstream ss(nomatributos);
-    std::string segmento;
-    int offset = 0, sumatoria = 0;
-
-    // Buscar índice del atributo
-    while (std::getline(ss, segmento, ','))
+    std::ifstream archivo(Archivo);
+    if (!archivo.is_open())
     {
-        if (segmento == atributo)
-            break;
-        offset++;
+        return -1; // Error: no se pudo abrir el archivo
     }
 
-    // Calcular desplazamiento en caracteres
-    for (int i = 0; i < offset; ++i)
-        sumatoria += Max(esquema, i + 1);
+    std::string primeraLinea;
+    if (!getline(archivo, primeraLinea))
+    {
+        return -2; // Error: archivo vacío
+    }
 
-    int *Info = Info_Disk(NDisco); // Devuelve {platos, superficies, pistas, sectores}
+    // Buscar cualquier número en la primera línea
+    size_t inicioNum = primeraLinea.find_first_of("0123456789");
+    if (inicioNum == std::string::npos)
+    {
+        return -3; // Error: no se encontraron dígitos
+    }
+
+    size_t finNum = primeraLinea.find_first_not_of("0123456789", inicioNum);
+    if (finNum == std::string::npos)
+    {
+        finNum = primeraLinea.length();
+    }
+
+    try
+    {
+        return std::stoi(primeraLinea.substr(inicioNum, finNum - inicioNum));
+    }
+    catch (const std::exception &e)
+    {
+        return -4; // Error: conversión fallida
+    }
+}
+
+void Records_Manager::First_Line(const std::string &Directory_File, const std::string &Replace_Line)
+{
+    std::ifstream Source_File(Directory_File);
+    std::string Content, Source_File_Line;
+
+    while (std::getline(Source_File, Source_File_Line))
+    {
+        Content += Source_File_Line + "\n";
+    }
+    Source_File.close();
+
+    size_t Start_Position = Content.find('\n');
+    Content.replace(0, Start_Position, Replace_Line);
+
+    std::ofstream Output_File(Directory_File);
+    Output_File << Content;
+    Output_File.close();
+}
+
+int Records_Manager::NumRegistros(const std::string &DirArchivo)
+{
+    std::ifstream archivo(DirArchivo);
+    std::string linea;
+    int Num = 0;
+
+    while (getline(archivo, linea))
+        Num++;
+    return Num - 1;
+}
+
+// =============================================
+// Manejo de registros
+// =============================================
+
+std::string *Records_Manager::split(std::string &s, char delimiter, int &numTokens)
+{
+    // Contar tokens
+    numTokens = 1;
+    bool inQuotes = false;
+    for (char c : s)
+    {
+        if (c == '"')
+            inQuotes = !inQuotes;
+        else if (c == delimiter && !inQuotes)
+            numTokens++;
+    }
+
+    // Dividir string
+    std::string *tokens = new std::string[numTokens];
+    std::string token;
+    int index = 0;
+    inQuotes = false;
+
+    for (char c : s)
+    {
+        if (c == '"')
+            inQuotes = !inQuotes;
+        else if (c == delimiter && !inQuotes)
+        {
+            tokens[index++] = token;
+            token.clear();
+            continue;
+        }
+        token += c;
+    }
+    tokens[index] = token;
+
+    return tokens;
+}
+
+int *Records_Manager::findLongestEntryLengths(const std::string &filename, int &numAttributes)
+{
+    std::ifstream file(filename);
+    std::string line;
+    int *maxAttributeLengths = nullptr;
+    numAttributes = 0;
+
+    std::getline(file, line); // Saltar encabezado
+
+    while (std::getline(file, line))
+    {
+        int numTokens = 0;
+        std::string *attributes = split(line, ',', numTokens);
+
+        if (maxAttributeLengths == nullptr)
+        {
+            numAttributes = numTokens;
+            maxAttributeLengths = new int[numAttributes]();
+        }
+
+        for (int i = 0; i < numTokens; ++i)
+        {
+            maxAttributeLengths[i] = std::max(maxAttributeLengths[i], static_cast<int>(attributes[i].length()));
+        }
+
+        delete[] attributes;
+    }
+
+    file.close();
+    return maxAttributeLengths;
+}
+
+bool Records_Manager::IsRecord_inTable(const std::string &linea, const std::string &NTabla)
+{
+    size_t posInicio = linea.find_first_of('#', linea.find_first_of('#') + 1);
+    if (posInicio == std::string::npos)
+        return false;
+
+    size_t posFinal = linea.find_first_of('#', posInicio + 1);
+    if (posFinal == std::string::npos)
+        return false;
+
+    return linea.substr(posInicio + 1, posFinal - posInicio - 1) == NTabla;
+}
+
+std::string Records_Manager::Corregir(const std::string &linea, const std::string &NTabla,
+                                      int contador, const std::string &dir, int num_Registros)
+{
+    std::string res, segmento;
+    bool str = false;
+
+    std::stringstream ss;
+    ss << std::setw(std::to_string(num_Registros).length()) << std::setfill('0') << contador;
+    std::string id_Reg = ss.str();
+
+    res += dir + '#' + id_Reg + "#" + NTabla + "#" + NTabla + "#";
+
+    int mult = 1;
+    for (size_t i = 0; i <= linea.length(); i++)
+    {
+        if (i == linea.length() || (linea[i] == ',' && !str))
+        {
+            res += LlenarI(segmento, Max(get_Esquema(NTabla), mult++));
+            segmento.clear();
+            if (i == linea.length())
+                break;
+        }
+        else if (linea[i] == '"')
+        {
+            str = !str;
+        }
+        else
+        {
+            segmento += linea[i];
+        }
+    }
+
+    return res;
+}
+
+std::string Records_Manager::Cargar(const std::string &Name_Disk)
+{
+    std::string Upload_File_Name, Name_Scheme;
+    std::cin.ignore();
+    std::cout << "Ingrese el nombre del archivo a cargar: ";
+    getline(std::cin, Upload_File_Name);
+
+    std::cout << "Ingrese nombre a su Relacion: ";
+    getline(std::cin, Name_Scheme);
+
+    if (!Check_Schemes(Name_Scheme))
+    {
+        Create_Scheme(Name_Scheme);
+    }
+
+    std::string Upload_File_Line, Trash;
+    std::array<int, 4> Info = Info_Disk(Name_Disk);
+
+    std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
+    getline(Upload_File, Trash); // Saltar encabezado
+
+    int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
+    int contador = 0;
+    bool registroPendiente = false;
+    std::string registroNoGuardado;
+
+    for (int i = 1; i <= Info[0] && contador < num; ++i)
+    {
+        std::string Directory_Plate = fs::current_path().string() + "/" + Name_Disk + "/Plato_" + std::to_string(i);
+
+        for (int j = 1; j <= Info[1] && contador < num; ++j)
+        {
+            std::string Directory_Surface = Directory_Plate + "/Superficie_" + std::to_string(j);
+
+            for (int k = 1; k <= Info[2] && contador < num; ++k)
+            {
+                std::string Directory_Track = Directory_Surface + "/Pista_" + std::to_string(k);
+
+                for (int l = 1; l <= Info[3] && contador < num; ++l)
+                {
+                    std::string Directory_Sector = Directory_Track + "/Sector_" + std::to_string(l);
+                    std::string Directory_File = Directory_Sector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
+
+                    std::ofstream txt(Directory_File, std::ios::app);
+                    if (!txt.is_open()) continue;
+
+                    // Procesar registro pendiente primero
+                    if (registroPendiente)
+                    {
+                        int longitud = static_cast<int>(registroNoGuardado.length());
+                        int Vacio = RemainCapacity(Directory_File);
+
+                        if (Vacio >= longitud)
+                        {
+                            txt << Corregir(registroNoGuardado, Name_Scheme, ++contador, 
+                                          std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), 
+                                          num) << std::endl;
+                            First_Line(Directory_File, std::to_string(Vacio - longitud));
+                            registroPendiente = false;
+                        }
+                        else
+                        {
+                            continue; 
+                        }
+                    }
+
+                    while (Upload_File.is_open() && getline(Upload_File, Upload_File_Line) && contador < num)
+                    {
+                        int longitud = static_cast<int>(Upload_File_Line.length());
+                        int Vacio = RemainCapacity(Directory_File);
+
+                        if (Vacio >= longitud)
+                        {
+                            txt << Corregir(Upload_File_Line, Name_Scheme, ++contador, 
+                                          std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), 
+                                          num) << std::endl;
+                            First_Line(Directory_File, std::to_string(Vacio - longitud));
+                        }
+                        else
+                        {
+                            registroNoGuardado = Upload_File_Line;
+                            registroPendiente = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Upload_File.close();
+    
+    if (registroPendiente)
+    {
+        std::cerr << "Advertencia: No se pudo cargar el registro " << (contador + 1) 
+                  << " por falta de espacio en el disco." << std::endl;
+    }
+
+    return Name_Scheme;
+}
+
+// =============================================
+// Operaciones SELECT
+// =============================================
+
+void Records_Manager::Select_all(const std::string &NDisco)
+{
+    std::string nEsquema;
+    std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
+    std::getline(std::cin, nEsquema);
+
+    std::string esquema = get_Esquema(nEsquema);
+    RecordsManagerHelpers::Print_Name_Atribute(esquema);
+
+    std::array<int, 4> Info = Info_Disk(NDisco);
     for (int i = 1; i <= Info[0]; ++i)
     {
         for (int j = 1; j <= Info[1]; ++j)
@@ -1034,29 +638,83 @@ void Records_Manager::Select_(std::string nEsquema, std::string atributo, std::s
             {
                 for (int l = 1; l <= Info[3]; ++l)
                 {
-                    std::string ruta = fs::current_path().string() + "/" + NDisco + "/Plato_" + std::to_string(i) + "/Superficie_" + std::to_string(j) +
-                                       "/Pista_" + std::to_string(k) + "/Sector_" + std::to_string(l) + "/" +
-                                       std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-                    std::ifstream archivo(ruta);
+                    std::string nomArchivo = fs::current_path().string() + "/" + NDisco +
+                                             "/Plato_" + std::to_string(i) +
+                                             "/Superficie_" + std::to_string(j) +
+                                             "/Pista_" + std::to_string(k) +
+                                             "/Sector_" + std::to_string(l) + "/" +
+                                             std::to_string(i) + std::to_string(j) +
+                                             std::to_string(k) + std::to_string(l) + ".txt";
+
+                    std::ifstream Select(nomArchivo);
+                    std::string linea;
+                    while (getline(Select, linea))
+                    {
+                        if (RecordsManagerHelpers::obtenerEntreHash(linea, 3) == nEsquema)
+                        {
+                            RecordsManagerHelpers::imprimirDatosFormateados(esquema, linea);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void Records_Manager::Select_(const std::string &nEsquema, const std::string &atributo,
+                              const std::string &signo, int valor, const std::string &NDisco)
+{
+    std::string esquema = get_Esquema(nEsquema);
+    std::string nomatributos = get_NomAtributos(esquema);
+
+    // Calcular desplazamiento
+    std::istringstream ss(nomatributos);
+    std::string segmento;
+    int offset = 0, sumatoria = 0;
+
+    while (std::getline(ss, segmento, ','))
+    {
+        if (segmento == atributo)
+            break;
+        sumatoria += Max(esquema, ++offset);
+    }
+
+    // Buscar en el disco
+    std::array<int, 4> Info = Info_Disk(NDisco);
+    for (int i = 1; i <= Info[0]; ++i)
+    {
+        for (int j = 1; j <= Info[1]; ++j)
+        {
+            for (int k = 1; k <= Info[2]; ++k)
+            {
+                for (int l = 1; l <= Info[3]; ++l)
+                {
+                    std::string nomArchivo = fs::current_path().string() + "/" + NDisco +
+                                             "/Plato_" + std::to_string(i) +
+                                             "/Superficie_" + std::to_string(j) +
+                                             "/Pista_" + std::to_string(k) +
+                                             "/Sector_" + std::to_string(l) + "/" +
+                                             std::to_string(i) + std::to_string(j) +
+                                             std::to_string(k) + std::to_string(l) + ".txt";
+
+                    std::ifstream archivo(nomArchivo);
                     std::string linea;
                     while (getline(archivo, linea))
                     {
-
                         if (!IsRecord_inTable(linea, nEsquema))
                             continue;
 
-                        int offsetReal = sumatoria + encontrar4Numeral(linea) + 1;
-                        std::string valstr = linea.substr(offsetReal, Max(esquema, offset + 1));
-                        valstr = Erase_Blanks(valstr);
+                        size_t posCuartoHash = linea.find('#', linea.find('#', linea.find('#', linea.find('#') + 1) + 1) + 1);
+                        std::string valstr = Erase_Blanks(linea.substr(
+                            sumatoria + posCuartoHash,
+                            Max(esquema, offset + 1)));
+
                         if (valstr.empty() || !std::all_of(valstr.begin(), valstr.end(), ::isdigit))
                             continue;
 
                         int val = std::stoi(valstr);
-
-                        if ((signo == "<" && val < valor) ||
-                            (signo == ">" && val > valor) ||
-                            (signo == "<=" && val <= valor) ||
-                            (signo == ">=" && val >= valor) ||
+                        if ((signo == "<" && val < valor) || (signo == ">" && val > valor) ||
+                            (signo == "<=" && val <= valor) || (signo == ">=" && val >= valor) ||
                             (signo == "==" && val == valor))
                         {
                             std::cout << linea << "\n";

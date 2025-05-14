@@ -15,16 +15,11 @@ void Menu()
 
 int main()
 {
-    //  g++ -o main main.cpp Megatron.cpp Disco.cpp
-    /*Megatron DB;
-    Disco A("Disco_1",5,2,3,4,1500,4);
-    DB.Cargar("Disco_1");*/
+    // g++ -o main main.cpp SGBD.cpp Records_Manager.cpp Disco.cpp Bloques.cpp
     SGBD A;
     A.Create_Disk();
     A.Cargar();
     //A.Cargar();
-    A.Select_Discriminado();
-
-
+    //A.Select_Discriminado();
     return 0;
 }
