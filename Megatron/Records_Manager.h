@@ -49,6 +49,8 @@ public:
     std::string* split(std::string& s, char delimiter, int& numTokens);
     int* findLongestEntryLengths(const std::string& filename, int& numAttributes);
 
+    bool ReemplazarRegistro(const std::string& , const std::string& );
+
 private:
     // (Se pueden agregar miembros privados si es necesario)
 };

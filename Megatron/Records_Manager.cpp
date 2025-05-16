@@ -530,87 +530,100 @@ std::string Records_Manager::Cargar(const std::string &Name_Disk)
         Create_Scheme(Name_Scheme);
     }
 
-    std::string Upload_File_Line, Trash;
-    std::array<int, 4> Info = Info_Disk(Name_Disk);
+    std::array<int, 4> disk_info = Info_Disk(Name_Disk);
+    const int total_sectores = disk_info[0] * disk_info[1] * disk_info[2] * disk_info[3];
+
+    int registros_cargados = 0;
+    int registros_procesados = 0;
+    bool registro_pendiente = false;
+    std::string registro_no_guardado;
+    std::string Upload_File_Line;
+
+    std::ifstream count_file(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
+    int total_registros = std::count(std::istreambuf_iterator<char>(count_file),
+                                     std::istreambuf_iterator<char>(), '\n') -
+                          1;
+    count_file.close();
 
     std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
-    getline(Upload_File, Trash); // Saltar encabezado
+    getline(Upload_File, Upload_File_Line); // Saltar encabezado
 
-    int num = NumRegistros(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
-    int contador = 0;
-    bool registroPendiente = false;
-    std::string registroNoGuardado;
-
-    for (int i = 1; i <= Info[0] && contador < num; ++i)
+    for (int sector = 0; sector < total_sectores && registros_cargados < total_registros; ++sector)
     {
-        std::string Directory_Plate = fs::current_path().string() + "/" + Name_Disk + "/Plato_" + std::to_string(i);
 
-        for (int j = 1; j <= Info[1] && contador < num; ++j)
+        int i = sector / (disk_info[1] * disk_info[2] * disk_info[3]) + 1;
+        int j = (sector / (disk_info[2] * disk_info[3])) % disk_info[1] + 1;
+        int k = (sector / disk_info[3]) % disk_info[2] + 1;
+        int l = sector % disk_info[3] + 1;
+
+        std::string file_path = fs::current_path().string() + "/" + Name_Disk +
+                                "/Plato_" + std::to_string(i) +
+                                "/Superficie_" + std::to_string(j) +
+                                "/Pista_" + std::to_string(k) +
+                                "/Sector_" + std::to_string(l) + "/" +
+                                std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
+
+        int capacidad = RemainCapacity(file_path);
+        std::ofstream sector_file(file_path, std::ios::app);
+
+        if (!sector_file.is_open())
+            continue;
+
+        if (registro_pendiente)
         {
-            std::string Directory_Surface = Directory_Plate + "/Superficie_" + std::to_string(j);
-
-            for (int k = 1; k <= Info[2] && contador < num; ++k)
+            int longitud = registro_no_guardado.length();
+            if (capacidad >= longitud)
             {
-                std::string Directory_Track = Directory_Surface + "/Pista_" + std::to_string(k);
-
-                for (int l = 1; l <= Info[3] && contador < num; ++l)
-                {
-                    std::string Directory_Sector = Directory_Track + "/Sector_" + std::to_string(l);
-                    std::string Directory_File = Directory_Sector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
-
-                    std::ofstream txt(Directory_File, std::ios::app);
-                    if (!txt.is_open()) continue;
-
-                    // Procesar registro pendiente primero
-                    if (registroPendiente)
-                    {
-                        int longitud = static_cast<int>(registroNoGuardado.length());
-                        int Vacio = RemainCapacity(Directory_File);
-
-                        if (Vacio >= longitud)
-                        {
-                            txt << Corregir(registroNoGuardado, Name_Scheme, ++contador, 
-                                          std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), 
-                                          num) << std::endl;
-                            First_Line(Directory_File, std::to_string(Vacio - longitud));
-                            registroPendiente = false;
-                        }
-                        else
-                        {
-                            continue; 
-                        }
-                    }
-
-                    while (Upload_File.is_open() && getline(Upload_File, Upload_File_Line) && contador < num)
-                    {
-                        int longitud = static_cast<int>(Upload_File_Line.length());
-                        int Vacio = RemainCapacity(Directory_File);
-
-                        if (Vacio >= longitud)
-                        {
-                            txt << Corregir(Upload_File_Line, Name_Scheme, ++contador, 
-                                          std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), 
-                                          num) << std::endl;
-                            First_Line(Directory_File, std::to_string(Vacio - longitud));
-                        }
-                        else
-                        {
-                            registroNoGuardado = Upload_File_Line;
-                            registroPendiente = true;
-                            break;
-                        }
-                    }
-                }
+                sector_file << Corregir(registro_no_guardado, Name_Scheme, ++registros_cargados,
+                                        std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l),
+                                        total_registros)
+                            << std::endl;
+                First_Line(file_path, std::to_string(capacidad - longitud));
+                registro_pendiente = false;
             }
+            else
+            {
+                continue;
+            }
+        }
+
+        while (!registro_pendiente && getline(Upload_File, Upload_File_Line))
+        {
+            int longitud = Upload_File_Line.length();
+            capacidad = RemainCapacity(file_path);
+
+            if (capacidad >= longitud)
+            {
+                sector_file << Corregir(Upload_File_Line, Name_Scheme, ++registros_cargados,
+                                        std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l),
+                                        total_registros)
+                            << std::endl;
+                First_Line(file_path, std::to_string(capacidad - longitud));
+                registros_procesados++;
+            }
+            else
+            {
+                registro_no_guardado = Upload_File_Line;
+                registro_pendiente = true;
+                break;
+            }
+
+            if (registros_cargados >= total_registros)
+                break;
         }
     }
 
     Upload_File.close();
-    
-    if (registroPendiente)
+
+    if (registro_pendiente)
     {
-        std::cerr << "Advertencia: No se pudo cargar el registro " << (contador + 1) 
-                  << " por falta de espacio en el disco." << std::endl;
+        std::cerr << "Advertencia: " << (total_registros - registros_cargados)
+                  << " registros no pudieron ser cargados por falta de espacio." << std::endl;
+    }
+    else if (registros_cargados < total_registros)
+    {
+        std::cerr << "Advertencia: Solo se cargaron " << registros_cargados
+                  << " de " << total_registros << " registros." << std::endl;
     }
 
     return Name_Scheme;
@@ -667,7 +680,6 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
     std::string esquema = get_Esquema(nEsquema);
     std::string nomatributos = get_NomAtributos(esquema);
 
-    // Calcular desplazamiento
     std::istringstream ss(nomatributos);
     std::string segmento;
     int offset = 0, sumatoria = 0;
@@ -679,7 +691,6 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
         sumatoria += Max(esquema, ++offset);
     }
 
-    // Buscar en el disco
     std::array<int, 4> Info = Info_Disk(NDisco);
     for (int i = 1; i <= Info[0]; ++i)
     {
@@ -724,4 +735,101 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
             }
         }
     }
+}
+
+bool Records_Manager::ReemplazarRegistro(const std::string &Name_Disk, const std::string &Name_Scheme)
+{
+    std::string id_buscar;
+    std::cout << "Ingrese el ID del registro a reemplazar: ";
+    std::cin.ignore();
+    getline(std::cin, id_buscar);
+
+    std::cout << "Ingrese los nuevos datos para el registro (en formato CSV): ";
+    std::string nuevos_datos;
+    getline(std::cin, nuevos_datos);
+
+    std::array<int, 4> disk_info = Info_Disk(Name_Disk);
+    bool encontrado = false;
+    bool reemplazado = false;
+
+
+    for (int i = 1; i <= disk_info[0]; ++i)
+    {
+        for (int j = 1; j <= disk_info[1]; ++j)
+        {
+            for (int k = 1; k <= disk_info[2]; ++k)
+            {
+                for (int l = 1; l <= disk_info[3]; ++l)
+                {
+                    std::string file_path = fs::current_path().string() + "/" + Name_Disk +
+                                            "/Plato_" + std::to_string(i) +
+                                            "/Superficie_" + std::to_string(j) +
+                                            "/Pista_" + std::to_string(k) +
+                                            "/Sector_" + std::to_string(l) + "/" +
+                                            std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
+
+                    std::ifstream in_file(file_path);
+                    if (!in_file.is_open())
+                        continue;
+
+                    std::string contenido;
+                    std::string linea;
+                    bool modificado = false;
+
+                    while (getline(in_file, linea))
+                    {
+                        size_t pos1 = linea.find('#');
+                        size_t pos2 = linea.find('#', pos1 + 1);
+                        std::string id_registro = linea.substr(pos1 + 1, pos2 - pos1 - 1);
+                        id_registro = Erase_Blanks(id_registro); 
+
+                        if (id_registro == id_buscar)
+                        {
+                            encontrado = true;
+
+                            std::string nuevo_registro = Corregir(nuevos_datos, Name_Scheme,
+                                                                  std::stoi(id_buscar),
+                                                                  std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l),
+                                                                  -1);
+                            contenido += nuevo_registro + "\n";
+                            modificado = true;
+                        }
+                        else
+                        {
+                            contenido += linea + "\n";
+                        }
+                    }
+                    in_file.close();
+
+                    if (modificado)
+                    {
+                        std::ofstream out_file(file_path);
+                        if (out_file.is_open())
+                        {
+                            out_file << contenido;
+                            out_file.close();
+                            reemplazado = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (!encontrado)
+    {
+        std::cout << "Registro con ID " << id_buscar << " no encontrado." << std::endl;
+        return false;
+    }
+
+    if (reemplazado)
+    {
+        std::cout << "Registro reemplazado exitosamente." << std::endl;
+    }
+    else
+    {
+        std::cout << "Error al guardar los cambios." << std::endl;
+    }
+
+    return reemplazado;
 }
