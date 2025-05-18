@@ -505,7 +505,7 @@ std::string Records_Manager::Corregir(const std::string &linea, const std::strin
     ss << std::setw(std::to_string(num_Registros).length()) << std::setfill('0') << contador;
 
     std::string id_Reg = ss.str();
-    //std::cout << id_Reg << std::endl << linea << std::endl;
+    // std::cout << id_Reg << std::endl << linea << std::endl;
     res += dir + '#' + id_Reg + "#" + NTabla + "#" + NTabla + "#";
 
     int mult = 1;
@@ -653,12 +653,32 @@ void Records_Manager::Select_all(const std::string &NDisco)
 {
     std::string nEsquema;
     std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
+    std::cin.ignore();
     std::getline(std::cin, nEsquema);
 
+    // Validar entrada vacía
+    if (nEsquema.empty()) {
+        std::cerr << "Error: Nombre de tabla no puede estar vacío" << std::endl;
+        return;
+    }
+
     std::string esquema = get_Esquema(nEsquema);
+
+    if (esquema.empty()) {
+        std::cerr << "Error: Tabla '" << nEsquema << "' no encontrada" << std::endl;
+        return;
+    }
+
     RecordsManagerHelpers::Print_Name_Atribute(esquema);
 
     std::array<int, 4> Info = Info_Disk(NDisco);
+    
+    // Validar información del disco
+    if (Info[0] == 0 || Info[1] == 0 || Info[2] == 0 || Info[3] == 0) {
+        std::cerr << "Error: Estructura de disco inválida" << std::endl;
+        return;
+    }
+
     for (int i = 1; i <= Info[0]; ++i)
     {
         for (int j = 1; j <= Info[1]; ++j)
@@ -668,20 +688,30 @@ void Records_Manager::Select_all(const std::string &NDisco)
                 for (int l = 1; l <= Info[3]; ++l)
                 {
                     std::string nomArchivo = fs::current_path().string() + "/" + NDisco +
-                                             "/Plato_" + std::to_string(i) +
-                                             "/Superficie_" + std::to_string(j) +
-                                             "/Pista_" + std::to_string(k) +
-                                             "/Sector_" + std::to_string(l) + "/" +
-                                             std::to_string(i) + std::to_string(j) +
-                                             std::to_string(k) + std::to_string(l) + ".txt";
+                                           "/Plato_" + std::to_string(i) +
+                                           "/Superficie_" + std::to_string(j) +
+                                           "/Pista_" + std::to_string(k) +
+                                           "/Sector_" + std::to_string(l) + "/" +
+                                           std::to_string(i) + std::to_string(j) +
+                                           std::to_string(k) + std::to_string(l) + ".txt";
 
                     std::ifstream Select(nomArchivo);
+                    if (!Select.is_open()) continue;
+
                     std::string linea;
                     while (getline(Select, linea))
                     {
-                        if (RecordsManagerHelpers::obtenerEntreHash(linea, 3) == nEsquema)
-                        {
-                            RecordsManagerHelpers::imprimirDatosFormateados(esquema, linea);
+                        try {
+                            std::string tabla_registro = RecordsManagerHelpers::obtenerEntreHash(linea, 3);
+                            if (tabla_registro == nEsquema)
+                            {
+
+                                RecordsManagerHelpers::imprimirDatosFormateados(esquema, linea);
+
+                            }
+                        } catch (const std::exception &e) {
+                            std::cerr << "Error procesando registro: " << e.what() << std::endl;
+                            continue;
                         }
                     }
                 }
@@ -749,121 +779,107 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
     }
 }
 
-void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::string &atributo, 
-                            const std::string &signo, int valor, const std::string &NDisco)
+void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::string &atributo, const std::string &signo, int valor, const std::string &NDisco)
 {
-    // Obtener información del esquema original
+
     std::string esquema_original = get_Esquema(nEsquema);
     std::string nomatributos = get_NomAtributos(esquema_original);
-    
-    // Obtener tipos de atributos del esquema
-    std::vector<std::string> tipos_atributos;
-    size_t pos = 0;
-    int campo = 0;
-    while ((pos = esquema_original.find('#', pos)) != std::string::npos) {
-        campo++;
-        if (campo % 3 == 2) { // Posición del tipo de dato
-            size_t start = pos + 1;
-            pos = esquema_original.find('#', start);
-            tipos_atributos.push_back(esquema_original.substr(start, pos - start));
-        } else {
-            pos++;
-        }
-    }
 
-    // Crear nombre para la nueva relación
     std::string nueva_relacion = nEsquema + "_filtrado_" + atributo + signo + std::to_string(valor);
-    
-    // Crear archivo CSV temporal para la nueva relación
+
     std::string temp_csv = fs::current_path().string() + "/" + nueva_relacion + ".csv";
     std::ofstream csv_file(temp_csv);
-    
-    // Escribir encabezado en el CSV
+
     csv_file << nomatributos << "\n";
 
-    // Calcular posición del atributo en el registro
     std::istringstream ss(nomatributos);
     std::string segmento;
     int offset = 0, sumatoria = 0;
 
-    while (std::getline(ss, segmento, ',')) {
-        if (segmento == atributo) break;
+    while (std::getline(ss, segmento, ','))
+    {
+        if (segmento == atributo)
+            break;
         sumatoria += Max(esquema_original, ++offset);
     }
 
-    // Obtener información del disco
+    std::string tipo_atributo = GetTipoAtributo(esquema_original, offset);
+
     std::array<int, 4> Info = Info_Disk(NDisco);
     int registros_encontrados = 0;
 
-    // Buscar registros que cumplan la condición
-    for (int i = 1; i <= Info[0]; ++i) {
-        for (int j = 1; j <= Info[1]; ++j) {
-            for (int k = 1; k <= Info[2]; ++k) {
-                for (int l = 1; l <= Info[3]; ++l) {
+    for (int i = 1; i <= Info[0]; ++i)
+    {
+        for (int j = 1; j <= Info[1]; ++j)
+        {
+            for (int k = 1; k <= Info[2]; ++k)
+            {
+                for (int l = 1; l <= Info[3]; ++l)
+                {
                     std::string nomArchivo = fs::current_path().string() + "/" + NDisco +
-                                           "/Plato_" + std::to_string(i) +
-                                           "/Superficie_" + std::to_string(j) +
-                                           "/Pista_" + std::to_string(k) +
-                                           "/Sector_" + std::to_string(l) + "/" +
-                                           std::to_string(i) + std::to_string(j) +
-                                           std::to_string(k) + std::to_string(l) + ".txt";
+                                             "/Plato_" + std::to_string(i) +
+                                             "/Superficie_" + std::to_string(j) +
+                                             "/Pista_" + std::to_string(k) +
+                                             "/Sector_" + std::to_string(l) + "/" +
+                                             std::to_string(i) + std::to_string(j) +
+                                             std::to_string(k) + std::to_string(l) + ".txt";
 
                     std::ifstream archivo(nomArchivo);
                     std::string linea;
-                    while (getline(archivo, linea)) {
-                        if (!IsRecord_inTable(linea, nEsquema)) continue;
+                    while (getline(archivo, linea))
+                    {
+                        if (!IsRecord_inTable(linea, nEsquema))
+                            continue;
 
-                        // Extraer valor del atributo
-                        size_t posCuartoHash = linea.find('#', 
-                            linea.find('#', 
-                            linea.find('#', 
-                            linea.find('#') + 1) + 1) + 1);
-                        
-                        std::string valstr = Erase_Blanks(linea.substr(
-                            sumatoria + posCuartoHash + 1, 
-                            Max(esquema_original, offset + 1)));
-                        
-                        if (valstr.empty()) continue;
+                        size_t posCuartoHash = linea.find('#', linea.find('#', linea.find('#', linea.find('#') + 1) + 1) + 1);
 
-                        // Verificar condición (solo para valores numéricos)
-                        if (tipos_atributos[offset] == "int" || tipos_atributos[offset] == "float") {
-                            if (!std::all_of(valstr.begin(), valstr.end(), ::isdigit)) continue;
+                        std::string valstr = Erase_Blanks(linea.substr(sumatoria + posCuartoHash + 1, Max(esquema_original, offset + 1)));
+
+                        if (valstr.empty())
+                            continue;
+
+                        bool cumple_condicion = false;
+                        if (tipo_atributo == "int" || tipo_atributo == "float")
+                        {
+                            if (!std::all_of(valstr.begin(), valstr.end(), ::isdigit))
+                                continue;
                             int val = std::stoi(valstr);
-                            
-                            if (!((signo == "<" && val < valor) || 
-                                (signo == ">" && val > valor) ||
-                                (signo == "<=" && val <= valor) || 
-                                (signo == ">=" && val >= valor) ||
-                                (signo == "==" && val == valor))) {
-                                continue;
-                            }
-                        } else {
-                            // Para strings, comparación exacta
-                            if (signo == "==" && valstr != std::to_string(valor)) {
-                                continue;
-                            }
+
+                            cumple_condicion = ((signo == "<" && val < valor) || (signo == ">" && val > valor) || (signo == "<=" && val <= valor) || (signo == ">=" && val >= valor) || (signo == "==" && val == valor));
+                        }
+                        else
+                        {
+                            cumple_condicion = (signo == "==" && valstr == std::to_string(valor));
                         }
 
-                        // Extraer datos originales (después del 4to #)
+                        if (!cumple_condicion)
+                            continue;
+
                         std::string datos_originales = linea.substr(posCuartoHash + 1);
                         std::string registro_csv;
                         size_t pos = 0;
-                        
-                        // Reconstruir registro en formato CSV con comillas
-                        for (size_t m = 0; m < tipos_atributos.size(); m++) {
-                            size_t field_length = Max(esquema_original, m + 1);
+                        int current_field = 0;
+
+                        while (pos < datos_originales.length() && current_field < get_NumAtributos(nEsquema))
+                        {
+                            size_t field_length = Max(esquema_original, current_field + 1);
                             std::string field = Erase_Blanks(datos_originales.substr(pos, field_length));
                             pos += field_length;
-                            
-                            // Agregar comillas si es string y contiene comas
-                            if (tipos_atributos[m] == "str" && field.find(',') != std::string::npos) {
+
+                            std::string field_type = GetTipoAtributo(esquema_original, current_field);
+
+                            if (field_type == "str" && field.find(',') != std::string::npos)
+                            {
                                 field = "\"" + field + "\"";
                             }
-                            
+
                             registro_csv += field;
-                            if (m < tipos_atributos.size() - 1) registro_csv += ",";
+                            if (++current_field < get_NumAtributos(nEsquema))
+                            {
+                                registro_csv += ",";
+                            }
                         }
-                        
+
                         csv_file << registro_csv << "\n";
                         registros_encontrados++;
                     }
@@ -874,20 +890,21 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
 
     csv_file.close();
 
-    // Crear el esquema para la nueva relación (copiando el original)
-    if (registros_encontrados > 0) {
+    if (registros_encontrados > 0)
+    {
         std::ofstream esquema_file(fs::current_path().string() + "/Esquemas.txt", std::ios::app);
-        if (esquema_file.is_open()) {
+        if (esquema_file.is_open())
+        {
             std::string nuevo_esquema = esquema_original;
             size_t pos = nuevo_esquema.find('#');
-            if (pos != std::string::npos) {
+            if (pos != std::string::npos)
+            {
                 nuevo_esquema.replace(0, pos, nueva_relacion);
                 esquema_file << nuevo_esquema << "\n";
             }
             esquema_file.close();
         }
 
-        // Cargar los resultados al disco
         Cargar(NDisco);
     }
 
@@ -989,4 +1006,28 @@ bool Records_Manager::ReemplazarRegistro(const std::string &Name_Disk, const std
     }
 
     return reemplazado;
+}
+
+std::string Records_Manager::GetTipoAtributo(const std::string &esquema, int atributo_index)
+{
+    size_t pos = 0;
+    int campo = 0;
+    int atributo_actual = 0;
+
+    while ((pos = esquema.find('#', pos)) != std::string::npos)
+    {
+        campo++;
+        if (campo % 3 == 2)
+        { // Posición del tipo de dato
+            if (atributo_actual == atributo_index)
+            {
+                size_t start = pos + 1;
+                pos = esquema.find('#', start);
+                return esquema.substr(start, pos - start);
+            }
+            atributo_actual++;
+        }
+        pos++;
+    }
+    return ""; // Retorna string vacío si no se encuentra
 }

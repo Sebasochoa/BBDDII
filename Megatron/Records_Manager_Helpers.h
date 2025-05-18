@@ -52,21 +52,44 @@ inline std::string obtenerEntreHash(const std::string& linea, int numero) {
 inline void Print_Name_Atribute(const std::string& entrada) {
     size_t pos = 0;
     int campo = 0;
-    
+    std::string nombre_atributo;
+    int ancho_atributo = 0;
+
     while (pos < entrada.length()) {
         size_t siguiente = entrada.find('#', pos);
-        std::string valor = entrada.substr(pos, siguiente - pos);
-
-        if ((campo - 1) % 3 == 0 && campo > 0) {
-            int ancho = 0;
-            if ((campo + 2) % 3 == 0) {
-                size_t next = entrada.find('#', siguiente + 1);
-                ancho = std::stoi(entrada.substr(siguiente + 1, next - siguiente - 1));
-            }
-            std::cout << valor << std::string(std::max(0, ancho - (int)valor.length()), ' ') << " ";
+        if (siguiente == std::string::npos) {
+            siguiente = entrada.length();
         }
 
-        pos = (siguiente == std::string::npos) ? entrada.length() : siguiente + 1;
+        std::string valor = entrada.substr(pos, siguiente - pos);
+        
+        // El patrón es: NombreTabla#NombreAtributo#Tipo#Longitud#NombreAtributo2#Tipo2#Longitud2#...
+        switch (campo % 3) {
+            case 1: // Nombre del atributo (campo 1, 4, 7, ...)
+                nombre_atributo = valor;
+                break;
+                
+            case 2: // Tipo del atributo (campo 2, 5, 8, ...)
+                // No necesitamos hacer nada con el tipo aquí
+                break;
+                
+            case 0: // Longitud del atributo (campo 3, 6, 9, ...)
+                if (campo > 0) { // Ignorar el primer campo (nombre de la tabla)
+                    try {
+                        ancho_atributo = std::stoi(valor);
+                        // Imprimir el nombre del atributo con el ancho adecuado
+                        std::cout << nombre_atributo 
+                                  << std::string(std::max(0, ancho_atributo - (int)nombre_atributo.length()), ' ')
+                                  << " ";
+                    } catch (const std::invalid_argument&) {
+                        // Si no es un número, usar longitud del nombre
+                        std::cout << nombre_atributo << " ";
+                    }
+                }
+                break;
+        }
+
+        pos = siguiente + 1;
         campo++;
     }
     std::cout << std::endl;
@@ -101,10 +124,24 @@ inline void imprimirDatosFormateados(const std::string& esquema, const std::stri
         std::string valor = esquema.substr(p, siguiente - p);
 
         if ((campoEsquema - 1) % 3 == 0 && campoEsquema > 0) {
-            // Es un nombre de atributo, obtener su ancho
-            size_t next = esquema.find('#', siguiente + 1);
-            next = esquema.find('#', next + 1);
-            int ancho = std::stoi(esquema.substr(next + 1, esquema.find('#', next + 1) - next - 1));
+            // Es un nombre de atributo, ahora obtener su ancho
+            size_t pos_tipo = esquema.find('#', siguiente + 1);
+            size_t pos_longitud = esquema.find('#', pos_tipo + 1);
+            
+            if (pos_tipo == std::string::npos || pos_longitud == std::string::npos) {
+                break; // Formato de esquema inválido
+            }
+
+            int ancho = 0;
+            try {
+                std::string str_ancho = esquema.substr(pos_longitud + 1, 
+                    esquema.find('#', pos_longitud + 1) - (pos_longitud + 1));
+                ancho = std::stoi(str_ancho);
+            } catch (const std::invalid_argument&) {
+                // Si no es un número, usar longitud del campo actual
+                ancho = datos.substr(cursor).find(' ') != std::string::npos ? 
+                    datos.substr(cursor).find(' ') : datos.length() - cursor;
+            }
 
             std::string valorDato = datos.substr(cursor, ancho);
             cursor += ancho;
@@ -123,7 +160,11 @@ inline void imprimirDatosFormateados(const std::string& esquema, const std::stri
         campoEsquema++;
     }
 
-    std::cout << datos.substr(cursor) << std::endl;
+    // Imprimir el resto de los datos
+    if (cursor < datos.length()) {
+        std::cout << datos.substr(cursor);
+    }
+    std::cout << std::endl;
 }
 
 } 

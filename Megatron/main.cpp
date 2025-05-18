@@ -20,6 +20,7 @@ int main()
     //A.Create_Disk();
     //A.Cargar();
     //A.Buscar_reemplazar();
-    A.Select_Discriminado_Archivo();
+    //A.Select_Discriminado_Archivo();
+    A.Select();
     return 0;
 }

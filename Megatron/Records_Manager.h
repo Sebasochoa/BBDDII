@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <vector>
 #include <cstring>
 #include <string>
 #include "Records_Manager_Helpers.h"
@@ -50,6 +49,7 @@ public:
     int* findLongestEntryLengths(const std::string& filename, int& numAttributes);
 
     bool ReemplazarRegistro(const std::string& , const std::string& );
+    std::string GetTipoAtributo(const std::string& esquema, int atributo_index);
 
 private:
     // (Se pueden agregar miembros privados si es necesario)
