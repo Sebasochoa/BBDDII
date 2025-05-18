@@ -16,8 +16,8 @@ public:
 
     // Operaciones SELECT
     void Select_all(const std::string& NDisco);
-    void Select_(const std::string& nEsquema, const std::string& atributo, 
-                const std::string& signo, int valor, const std::string& NDisco);
+    void Select_(const std::string& nEsquema, const std::string& atributo, const std::string& signo, int valor, const std::string& NDisco);
+    void SelectArchivo(const std::string& nEsquema, const std::string& atributo, const std::string& signo, int valor, const std::string& NDisco);
 
     // Manejo de registros
     std::string Corregir(const std::string& linea, const std::string& NTabla, 

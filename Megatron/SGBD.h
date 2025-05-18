@@ -14,6 +14,7 @@ public:
     void Cargar();
     void Select();
     void Select_Discriminado();
+    void Select_Discriminado_Archivo();
     void Buscar_reemplazar();
 };
 

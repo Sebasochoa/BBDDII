@@ -19,6 +19,7 @@ int main()
     SGBD A;
     //A.Create_Disk();
     //A.Cargar();
-    A.Buscar_reemplazar();
+    //A.Buscar_reemplazar();
+    A.Select_Discriminado_Archivo();
     return 0;
 }

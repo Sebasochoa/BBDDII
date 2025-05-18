@@ -56,7 +56,7 @@ void SGBD::Select()
 
 void SGBD::Select_Discriminado()
 {
-    std::string name_disk, name_atribute, sign, name_squeme;
+    /*std::string name_disk, name_atribute, sign, name_squeme;
     int valor;
     std::cout << "Ingrese el Disco de donde quiere seleccionar la Tabla: ";
     std::cin >> name_disk;
@@ -67,8 +67,25 @@ void SGBD::Select_Discriminado()
     std::cout << "Ingrese signo con el que seleccionara el atributo ( >, <, =) ";
     std::cin >> sign;
     std::cout << "Ingrese el valor que desea seleccionar ";
-    std::cin >> valor;
-    Records.Select_(name_squeme, name_atribute, sign, valor, name_disk);
+    std::cin >> valor;*/
+    Records.Select_("titanicG", "Age", "==", 22, "A");
+}
+
+void SGBD::Select_Discriminado_Archivo()
+{
+    /*std::string name_disk, name_atribute, sign, name_squeme;
+    int valor;
+    std::cout << "Ingrese el Disco de donde quiere seleccionar la Tabla: ";
+    std::cin >> name_disk;
+    std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
+    std::cin >> name_squeme;
+    std::cout << "Ingrese el Atributo a seleccionar: ";
+    std::cin >> name_atribute;
+    std::cout << "Ingrese signo con el que seleccionara el atributo ( >, <, =) ";
+    std::cin >> sign;
+    std::cout << "Ingrese el valor que desea seleccionar ";
+    std::cin >> valor;*/
+    Records.SelectArchivo("titanicG", "Age", "==", 22, "A");
 }
 
 void SGBD::Buscar_reemplazar()
