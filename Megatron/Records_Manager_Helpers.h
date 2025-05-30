@@ -30,7 +30,6 @@ inline std::string trim(const std::string& str) {
 inline std::string obtenerEntreHash(const std::string& linea, int numero) {
     size_t pos = 0;
     int contador = 0;
-    
     while (contador < numero && pos != std::string::npos) {
         pos = linea.find('#', pos);
         if (pos != std::string::npos) {

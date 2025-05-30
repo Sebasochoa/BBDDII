@@ -17,10 +17,10 @@ int main()
 {
     // g++ -o main main.cpp SGBD.cpp Records_Manager.cpp Disco.cpp Bloques.cpp
     SGBD A;
-    //A.Create_Disk();
-    //A.Cargar();
+    A.Create_Disk();
+    //A.Select_Discriminado_Archivo();
     //A.Buscar_reemplazar();
     //A.Select_Discriminado_Archivo();
-    A.Select();
+    
     return 0;
 }

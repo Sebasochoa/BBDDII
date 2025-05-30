@@ -57,8 +57,10 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
     CapSection = Capacity;
 
     std::string directorio = fs::current_path().string();
-    std::string dirNDisco = directorio + "/" + NDisco;
+    std::string dirNDisco = directorio + "/Discos";
 
+    fs::create_directory(dirNDisco);
+    dirNDisco = dirNDisco + "/" + NDisco;
     fs::create_directory(dirNDisco);
 
     for (int i = 1; i <= NPlates; ++i)
@@ -93,6 +95,11 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
         }
     }
     Blocks.Initialize(Capacity, NumSectorxBloque, MaxCapacity(), NDisco);
+    std::cout << "Disco " << NDisco << ": \n";
+    std::cout << "Capacidad: " << MaxCapacity() << " B\n";
+    std::cout << "Capacidad del Bloque: " << NumSectorxBloque * Capacity << " B\n";
+    std::cout << "Bloques x Pista: " << (Capacity * Sectors) / (NumSectorxBloque * Capacity) << "\n";
+    std::cout << "Bloques x Plato: " << (Capacity * Sectors * Surfaces * Tracks) / (NumSectorxBloque * Capacity) << "\n";
 }
 
 std::string Disco::Get_Name()

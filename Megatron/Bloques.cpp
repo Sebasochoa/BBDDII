@@ -15,7 +15,7 @@ void Bloques::Initialize(int capacity, int numBlocksx, int maxCapacity, std::str
     Capacity = capacity * numBlocksx;
     NumBlocks = maxCapacity / (capacity * numBlocksx);
     NameDisk = nameDisk;
-    std::string dirDisco = fs::current_path().string() + "/Bloques";
+    std::string dirDisco = fs::current_path().string() + "/Discos/Bloques_" + nameDisk;
     fs::create_directory(dirDisco);
     for (size_t i = 0; i < NumBlocks; i++)
     {

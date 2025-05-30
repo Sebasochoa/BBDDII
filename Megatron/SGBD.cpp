@@ -31,10 +31,22 @@ void SGBD::Create_Disk()
 
 void SGBD::Cargar()
 {
-    std::string name_disk;
+    std::string name_disk, formato;
     std::cout << "Ingrese el Disco al que quiere Cargar el documento: ";
     std::cin >> name_disk;
-    std::string Table = Records.Cargar(name_disk);
+    std::cout << "Ingrese si desea registros de longitud variable o estatica(E o V):";
+    std::cin >> formato;
+
+    std::string Table;
+    if (formato == "E")
+    {
+        Table = Records.Cargar(name_disk, true);
+    }
+    else
+    {
+        Table = Records.Cargar(name_disk, false);
+    }
+
     int j = 0;
     for (size_t i = 0; i < Discos.size(); i++)
     {
@@ -85,7 +97,7 @@ void SGBD::Select_Discriminado_Archivo()
     std::cin >> sign;
     std::cout << "Ingrese el valor que desea seleccionar ";
     std::cin >> valor;
-    Records.Select_(name_squeme, name_atribute, sign, valor, name_disk);
+    Records.SelectArchivo(name_squeme, name_atribute, sign, valor, name_disk);
 }
 
 void SGBD::Buscar_reemplazar()
