@@ -42,7 +42,8 @@ public:
     void Create_Scheme(const std::string& Name_Scheme,const std::string& Name_Disk, bool formato);
     std::array<int, 4> Info_Disk(const std::string& Name_Disk);
     int RemainCapacity(const std::string& Archivo);
-    std::string Cargar(const std::string& Name_Disk, bool formato);
+    std::string Cargar(const std::string &Name_Disk, const bool &formato);
+    std::string Cargar(const std::string &Name_Disk, const bool &formato, const std::string &Name_File);
     void First_Line(const std::string& Directory_File, const std::string& Replace_Line);
     int NumRegistros(const std::string& DirArchivo);
 
