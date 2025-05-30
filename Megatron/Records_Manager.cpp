@@ -199,10 +199,11 @@ void Records_Manager::Create_Scheme(const std::string &Name_Scheme, const std::s
     }
 
     Scheme = formato ? Scheme + "FI" : Scheme + "VA";
-
+    
     std::ofstream Scheme_File(fs::current_path().string() + "/Discos/" + Name_Disk + "/Plato_1/Superficie_1/Pista_1/Sector_1/1111.txt", std::ios::app);
     Scheme_File << Scheme << std::endl;
     Scheme_File.close();
+    
 }
 
 int Records_Manager::get_NumAtributos(const std::string &esquema, const std::string &Name_Disk)
@@ -627,7 +628,7 @@ std::string Records_Manager::RVariable(const std::string &linea, const std::stri
     return registro;
 }
 
-std::string Records_Manager::Cargar(const std::string &Name_Disk, bool formato)
+std::string Records_Manager::Cargar(const std::string &Name_Disk, const bool &formato)
 {
     std::string Upload_File_Name, Name_Scheme;
     std::cin.ignore();
@@ -654,7 +655,6 @@ std::string Records_Manager::Cargar(const std::string &Name_Disk, bool formato)
     std::string registro_no_guardado;
     std::string Upload_File_Line;
 
-    // Contar registros (excluyendo encabezado)
     std::ifstream count_file(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
     int total_registros = std::count(std::istreambuf_iterator<char>(count_file),
                                      std::istreambuf_iterator<char>(), '\n') -
@@ -662,17 +662,15 @@ std::string Records_Manager::Cargar(const std::string &Name_Disk, bool formato)
     count_file.close();
 
     std::ifstream Upload_File(fs::current_path().string() + "/" + Upload_File_Name + ".csv");
-    getline(Upload_File, Upload_File_Line); // Saltar encabezado
+    getline(Upload_File, Upload_File_Line);
 
-    // Distribuir registros entre todos los platos primero
     for (int sector_global = 0; sector_global < sectores_por_plato && registros_cargados < total_registros; ++sector_global)
     {
-        // Calcular coordenadas dentro de cada plato
+
         int j = (sector_global / (disk_info[2] * disk_info[3])) % disk_info[1] + 1;
         int k = (sector_global / disk_info[3]) % disk_info[2] + 1;
         int l = sector_global % disk_info[3] + 1;
 
-        // Procesar este sector en todos los platos
         for (int i = 1; i <= total_platos && registros_cargados < total_registros; ++i)
         {
             std::string file_path = fs::current_path().string() + "/Discos/" + Name_Disk +
@@ -689,7 +687,6 @@ std::string Records_Manager::Cargar(const std::string &Name_Disk, bool formato)
             if (!sector_file.is_open())
                 continue;
 
-            // Procesar registro pendiente primero
             if (registro_pendiente)
             {
                 int longitud = registro_no_guardado.length();
@@ -715,7 +712,6 @@ std::string Records_Manager::Cargar(const std::string &Name_Disk, bool formato)
                 }
             }
 
-            // Procesar nuevos registros
             while (!registro_pendiente && getline(Upload_File, Upload_File_Line))
             {
                 int longitud = Upload_File_Line.length();
@@ -764,6 +760,129 @@ std::string Records_Manager::Cargar(const std::string &Name_Disk, bool formato)
     }
 
     return Name_Scheme;
+}
+
+std::string Records_Manager::Cargar(const std::string &Name_Disk, const bool &formato, const std::string &Name_File)
+{
+
+
+    std::array<int, 4> disk_info = Info_Disk(Name_Disk);
+
+    std::cout << std::endl;
+    const int total_platos = disk_info[0];
+    const int sectores_por_plato = disk_info[1] * disk_info[2] * disk_info[3];
+
+    int registros_cargados = 0;
+    int registros_procesados = 0;
+    bool registro_pendiente = false;
+    std::string registro_no_guardado;
+    std::string Upload_File_Line;
+
+    std::ifstream count_file(fs::current_path().string() + "/" + Name_File + ".csv");
+    int total_registros = std::count(std::istreambuf_iterator<char>(count_file),
+                                     std::istreambuf_iterator<char>(), '\n') -
+                          1;
+    count_file.close();
+
+    std::ifstream Upload_File(fs::current_path().string() + "/" + Name_File + ".csv");
+    getline(Upload_File, Upload_File_Line);
+
+    for (int sector_global = 0; sector_global < sectores_por_plato && registros_cargados < total_registros; ++sector_global)
+    {
+
+        int j = (sector_global / (disk_info[2] * disk_info[3])) % disk_info[1] + 1;
+        int k = (sector_global / disk_info[3]) % disk_info[2] + 1;
+        int l = sector_global % disk_info[3] + 1;
+
+        for (int i = 1; i <= total_platos && registros_cargados < total_registros; ++i)
+        {
+            std::string file_path = fs::current_path().string() + "/Discos/" + Name_Disk +
+                                    "/Plato_" + std::to_string(i) +
+                                    "/Superficie_" + std::to_string(j) +
+                                    "/Pista_" + std::to_string(k) +
+                                    "/Sector_" + std::to_string(l) + "/" +
+                                    std::to_string(i) + std::to_string(j) +
+                                    std::to_string(k) + std::to_string(l) + ".txt";
+
+            int capacidad = RemainCapacity(file_path);
+            std::ofstream sector_file(file_path, std::ios::app);
+
+            if (!sector_file.is_open())
+                continue;
+            std::cout << "Funciona\n";
+            if (registro_pendiente)
+            {
+                int longitud = registro_no_guardado.length();
+                if (capacidad >= longitud)
+                {
+                    std::string registro_corregido;
+                    if (formato)
+                    {
+                        registro_corregido = REstatico(Upload_File_Line, Name_File, ++registros_cargados, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), total_registros, Name_Disk);
+                    }
+                    else
+                    {
+                        registro_corregido = RVariable(Upload_File_Line, Name_File, ++registros_cargados, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), total_registros, Name_Disk);
+                    }
+
+                    sector_file << registro_corregido << std::endl;
+                    First_Line(file_path, std::to_string(capacidad - longitud));
+                    registro_pendiente = false;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            while (!registro_pendiente && getline(Upload_File, Upload_File_Line))
+            {
+                int longitud = Upload_File_Line.length();
+                capacidad = RemainCapacity(file_path);
+
+                if (capacidad >= longitud)
+                {
+                    std::string registro_corregido;
+                    if (formato)
+                    {
+                        registro_corregido = REstatico(Upload_File_Line, Name_File, ++registros_cargados, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), total_registros, Name_Disk);
+                    }
+                    else
+                    {
+                        registro_corregido = RVariable(Upload_File_Line, Name_File, ++registros_cargados, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l), total_registros, Name_Disk);
+                    }
+
+                    sector_file << registro_corregido << std::endl;
+                    First_Line(file_path, std::to_string(capacidad - longitud));
+                    registros_procesados++;
+                }
+                else
+                {
+                    registro_no_guardado = Upload_File_Line;
+                    registro_pendiente = true;
+                    break;
+                }
+
+                if (registros_cargados >= total_registros)
+                    break;
+            }
+        }
+    }
+
+    Upload_File.close();
+
+    if (registro_pendiente)
+    {
+        std::cerr << "Advertencia: " << (total_registros - registros_cargados)
+                  << " registros no pudieron ser cargados por falta de espacio." << std::endl;
+    }
+    else if (registros_cargados < total_registros)
+    {
+        std::cerr << "Advertencia: Solo se cargaron " << registros_cargados
+                  << " de " << total_registros << " registros." << std::endl;
+    }
+
+    return Name_File;
 }
 
 // =============================================
@@ -823,7 +942,7 @@ void Records_Manager::Select_all(const std::string &NDisco)
                         try
                         {
                             std::string tabla_registro = RecordsManagerHelpers::obtenerEntreHash(linea, 2);
-                            //std::cout << tabla_registro << std::endl;
+                            // std::cout << tabla_registro << std::endl;
                             if (tabla_registro == nEsquema)
                             {
                                 if (formatoFijo)
@@ -835,7 +954,7 @@ void Records_Manager::Select_all(const std::string &NDisco)
                                     // Procesamiento para formato variable
                                     size_t posDatos = linea.find('#', linea.find('#', linea.find('#') + 1) + 1) + 1;
                                     size_t posMetadata = linea.find("#METADATA:");
-                                    
+
                                     if (posMetadata == std::string::npos)
                                     {
                                         std::cerr << "Error: Formato de registro variable inválido" << std::endl;
@@ -851,7 +970,8 @@ void Records_Manager::Select_all(const std::string &NDisco)
                                     std::string campoMeta;
                                     while (std::getline(metaStream, campoMeta, ';'))
                                     {
-                                        if (campoMeta.empty()) continue;
+                                        if (campoMeta.empty())
+                                            continue;
                                         size_t sep = campoMeta.find(':');
                                         int numCampo = std::stoi(campoMeta.substr(0, sep));
                                         int longitud = std::stoi(campoMeta.substr(sep + 1));
@@ -885,7 +1005,7 @@ void Records_Manager::Select_all(const std::string &NDisco)
                                     }
 
                                     // Imprimir valores
-                                    for (const auto& valor : valores)
+                                    for (const auto &valor : valores)
                                     {
                                         std::cout << std::left << std::setw(20) << valor << " ";
                                     }
@@ -950,13 +1070,13 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
             {
                 for (int l = 1; l <= Info[3]; ++l)
                 {
-                    std::string nomArchivo = fs::current_path().string() + "/Discos/" + NDisco + 
-                                           "/Plato_" + std::to_string(i) + 
-                                           "/Superficie_" + std::to_string(j) + 
-                                           "/Pista_" + std::to_string(k) + 
-                                           "/Sector_" + std::to_string(l) + "/" + 
-                                           std::to_string(i) + std::to_string(j) + 
-                                           std::to_string(k) + std::to_string(l) + ".txt";
+                    std::string nomArchivo = fs::current_path().string() + "/Discos/" + NDisco +
+                                             "/Plato_" + std::to_string(i) +
+                                             "/Superficie_" + std::to_string(j) +
+                                             "/Pista_" + std::to_string(k) +
+                                             "/Sector_" + std::to_string(l) + "/" +
+                                             std::to_string(i) + std::to_string(j) +
+                                             std::to_string(k) + std::to_string(l) + ".txt";
 
                     std::ifstream archivo(nomArchivo);
                     std::string linea;
@@ -973,13 +1093,13 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
                                 // Procesamiento para formato fijo
                                 size_t posDatos = linea.find('#', linea.find('#', linea.find('#') + 1) + 1) + 1;
                                 int offset = 0;
-                                
+
                                 // Calcular la posición del atributo
                                 for (int idx = 0; idx < atributoIndex; ++idx)
                                 {
                                     offset += Max(esquema, idx + 1);
                                 }
-                                
+
                                 int longitud = Max(esquema, atributoIndex + 1);
                                 valorCampo = Erase_Blanks(linea.substr(posDatos + offset, longitud));
                             }
@@ -999,7 +1119,8 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
                                 // Encontrar la posición y longitud del atributo en los metadatos
                                 while (std::getline(metaStream, campoMeta, ';'))
                                 {
-                                    if (campoMeta.empty()) continue;
+                                    if (campoMeta.empty())
+                                        continue;
                                     size_t sep = campoMeta.find(':');
                                     int numCampo = std::stoi(campoMeta.substr(0, sep));
                                     int longitud = std::stoi(campoMeta.substr(sep + 1));
@@ -1009,11 +1130,11 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
                                         // Extraer el campo de los datos
                                         size_t posDatos = linea.find('#', linea.find('#', linea.find('#') + 1) + 1) + 1;
                                         std::string datos = linea.substr(posDatos, posMetadata - posDatos);
-                                        
+
                                         std::istringstream datosStream(datos);
                                         std::string campo;
                                         int campoIdx = 0;
-                                        
+
                                         while (std::getline(datosStream, campo, '|'))
                                         {
                                             if (campoIdx == numCampo)
@@ -1049,12 +1170,17 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
                                 {
                                     double valorNumerico = std::stod(valorCampo);
                                     double valorComparar = valor;
-                                    
-                                    if (signo == "<") cumpleCondicion = (valorNumerico < valorComparar);
-                                    else if (signo == ">") cumpleCondicion = (valorNumerico > valorComparar);
-                                    else if (signo == "<=") cumpleCondicion = (valorNumerico <= valorComparar);
-                                    else if (signo == ">=") cumpleCondicion = (valorNumerico >= valorComparar);
-                                    else if (signo == "==") cumpleCondicion = (valorNumerico == valorComparar);
+
+                                    if (signo == "<")
+                                        cumpleCondicion = (valorNumerico < valorComparar);
+                                    else if (signo == ">")
+                                        cumpleCondicion = (valorNumerico > valorComparar);
+                                    else if (signo == "<=")
+                                        cumpleCondicion = (valorNumerico <= valorComparar);
+                                    else if (signo == ">=")
+                                        cumpleCondicion = (valorNumerico >= valorComparar);
+                                    else if (signo == "==")
+                                        cumpleCondicion = (valorNumerico == valorComparar);
                                 }
                                 catch (...)
                                 {
@@ -1063,7 +1189,8 @@ void Records_Manager::Select_(const std::string &nEsquema, const std::string &at
                             }
                             else // Tipo string
                             {
-                                if (signo == "==") cumpleCondicion = (valorCampo == std::to_string(valor));
+                                if (signo == "==")
+                                    cumpleCondicion = (valorCampo == std::to_string(valor));
                             }
 
                             if (cumpleCondicion)
@@ -1146,13 +1273,13 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
             {
                 for (int l = 1; l <= Info[3]; ++l)
                 {
-                    std::string nomArchivo = fs::current_path().string() + "/Discos/" + NDisco + 
-                                           "/Plato_" + std::to_string(i) + 
-                                           "/Superficie_" + std::to_string(j) + 
-                                           "/Pista_" + std::to_string(k) + 
-                                           "/Sector_" + std::to_string(l) + "/" + 
-                                           std::to_string(i) + std::to_string(j) + 
-                                           std::to_string(k) + std::to_string(l) + ".txt";
+                    std::string nomArchivo = fs::current_path().string() + "/Discos/" + NDisco +
+                                             "/Plato_" + std::to_string(i) +
+                                             "/Superficie_" + std::to_string(j) +
+                                             "/Pista_" + std::to_string(k) +
+                                             "/Sector_" + std::to_string(l) + "/" +
+                                             std::to_string(i) + std::to_string(j) +
+                                             std::to_string(k) + std::to_string(l) + ".txt";
 
                     std::ifstream archivo(nomArchivo);
                     std::string linea;
@@ -1171,14 +1298,14 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
                                 // Procesamiento para formato fijo
                                 size_t posDatos = linea.find('#', linea.find('#', linea.find('#') + 1) + 1) + 1;
                                 int offset = 0;
-                                
+
                                 for (int idx = 0; idx < get_NumAtributos(nEsquema, NDisco); ++idx)
                                 {
                                     int longitud = Max(esquema, idx + 1);
                                     std::string campo = Erase_Blanks(linea.substr(posDatos + offset, longitud));
                                     valoresCampos.push_back(campo);
                                     offset += longitud;
-                                    
+
                                     if (idx == atributoIndex)
                                     {
                                         valorCampo = campo;
@@ -1187,27 +1314,24 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
                             }
                             else
                             {
-                                // Procesamiento para formato variable
                                 size_t posDatos = linea.find('#', linea.find('#', linea.find('#') + 1) + 1) + 1;
                                 size_t posMetadata = linea.find("#METADATA:");
-                                
+
                                 if (posMetadata == std::string::npos)
                                     continue;
 
                                 std::string datos = linea.substr(posDatos, posMetadata - posDatos);
                                 std::string metadata = linea.substr(posMetadata + 10);
-                                
-                                // Parsear metadatos para obtener posiciones
+
                                 std::map<int, std::string> camposMap;
                                 std::istringstream metaStream(metadata);
                                 std::string campoMeta;
                                 int campoActual = 0;
-                                
+
                                 std::istringstream datosStream(datos);
                                 std::string campo;
                                 while (std::getline(datosStream, campo, '|'))
                                 {
-                                    // Eliminar escapes
                                     size_t escapePos;
                                     while ((escapePos = campo.find("\\|")) != std::string::npos)
                                     {
@@ -1217,7 +1341,7 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
                                     {
                                         campo.replace(escapePos, 2, "#");
                                     }
-                                    
+
                                     if (campoActual == atributoIndex)
                                     {
                                         valorCampo = campo;
@@ -1227,7 +1351,6 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
                                 }
                             }
 
-                            // Validar condición
                             bool cumpleCondicion = false;
                             if (!valorCampo.empty())
                             {
@@ -1237,31 +1360,36 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
                                     {
                                         double valorNumerico = std::stod(valorCampo);
                                         double valorComparar = valor;
-                                        
-                                        if (signo == "<") cumpleCondicion = (valorNumerico < valorComparar);
-                                        else if (signo == ">") cumpleCondicion = (valorNumerico > valorComparar);
-                                        else if (signo == "<=") cumpleCondicion = (valorNumerico <= valorComparar);
-                                        else if (signo == ">=") cumpleCondicion = (valorNumerico >= valorComparar);
-                                        else if (signo == "==") cumpleCondicion = (valorNumerico == valorComparar);
+
+                                        if (signo == "<")
+                                            cumpleCondicion = (valorNumerico < valorComparar);
+                                        else if (signo == ">")
+                                            cumpleCondicion = (valorNumerico > valorComparar);
+                                        else if (signo == "<=")
+                                            cumpleCondicion = (valorNumerico <= valorComparar);
+                                        else if (signo == ">=")
+                                            cumpleCondicion = (valorNumerico >= valorComparar);
+                                        else if (signo == "==")
+                                            cumpleCondicion = (valorNumerico == valorComparar);
                                     }
                                     catch (...)
                                     {
                                         continue;
                                     }
                                 }
-                                else // Tipo string
+                                else
                                 {
-                                    if (signo == "==") cumpleCondicion = (valorCampo == std::to_string(valor));
+                                    if (signo == "==")
+                                        cumpleCondicion = (valorCampo == std::to_string(valor));
                                 }
                             }
 
                             if (cumpleCondicion)
                             {
-                                // Escribir registro en el archivo CSV
                                 std::string registro_csv;
                                 for (size_t idx = 0; idx < valoresCampos.size(); ++idx)
                                 {
-                                    if (GetTipoAtributo(esquema, idx) == "str" && 
+                                    if (GetTipoAtributo(esquema, idx) == "str" &&
                                         valoresCampos[idx].find(',') != std::string::npos)
                                     {
                                         registro_csv += "\"" + valoresCampos[idx] + "\"";
@@ -1270,7 +1398,7 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
                                     {
                                         registro_csv += valoresCampos[idx];
                                     }
-                                    
+
                                     if (idx < valoresCampos.size() - 1)
                                     {
                                         registro_csv += ",";
@@ -1295,16 +1423,16 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
 
     if (registros_encontrados > 0)
     {
-        // Crear nuevo esquema basado en el original
         std::string nuevo_esquema = esquema;
         size_t pos = nuevo_esquema.find('#');
         if (pos != std::string::npos)
         {
             nuevo_esquema.replace(0, pos, nueva_relacion);
-            
+
             // Guardar el nuevo esquema
-            std::ofstream esquema_file(fs::current_path().string() + "/Discos/" + NDisco + 
-                                     "/Plato_1/Superficie_1/Pista_1/Sector_1/1111.txt", std::ios::app);
+            std::ofstream esquema_file(fs::current_path().string() + "/Discos/" + NDisco +
+                                           "/Plato_1/Superficie_1/Pista_1/Sector_1/1111.txt",
+                                       std::ios::app);
             if (esquema_file.is_open())
             {
                 esquema_file << nuevo_esquema << "\n";
@@ -1312,8 +1440,9 @@ void Records_Manager::SelectArchivo(const std::string &nEsquema, const std::stri
             }
         }
 
-        // Cargar la nueva relación
-        Cargar(NDisco, !formatoFijo); // Mantener el mismo formato que el original
+
+        Cargar(NDisco, !formatoFijo, temp_csv);
+         
     }
 
     std::cout << "Se encontraron " << registros_encontrados << " registros. "
