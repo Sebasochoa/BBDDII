@@ -57,6 +57,7 @@
         "format": "cpp",
         "span": "cpp",
         "variant": "cpp",
-        "map": "cpp"
+        "map": "cpp",
+        "set": "cpp"
     }
 }

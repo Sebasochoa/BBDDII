@@ -1,8 +1,40 @@
 #include "SGBD.h"
 #include <iostream>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 SGBD::SGBD()
 {
+    std::string rutaDiscos = fs::current_path().string() + "/Discos";
+
+    if (!fs::exists(rutaDiscos))
+    {
+        std::cout << "No se encontró la carpeta de discos. Se creará automáticamente al crear uno.\n";
+        return;
+    }
+
+    for (const auto &entry : fs::directory_iterator(rutaDiscos))
+    {
+        if (entry.is_directory())
+        {
+            std::string nombreDisco = entry.path().filename().string();
+            if (nombreDisco.rfind("Bloques_", 0) == 0 || nombreDisco.rfind("Esquemas", 0) == 0)
+            {
+                continue;
+            }
+            Discos.push_back(Disco(nombreDisco));
+        }
+    }
+
+    for (auto& disco : Discos) {
+        disco.Clear_Blocks();
+    }
+
+    if (Discos.empty())
+    {
+        std::cout << "No se encontraron discos existentes.\n";
+    }
+
 }
 
 SGBD::~SGBD()
@@ -37,16 +69,6 @@ void SGBD::Cargar()
     std::cout << "Ingrese si desea registros de longitud variable o estatica(E o V):";
     std::cin >> formato;
 
-    std::string Table;
-    if (formato == "E")
-    {
-        Table = Records.Cargar(name_disk, true);
-    }
-    else
-    {
-        Table = Records.Cargar(name_disk, false);
-    }
-
     int j = 0;
     for (size_t i = 0; i < Discos.size(); i++)
     {
@@ -55,7 +77,7 @@ void SGBD::Cargar()
             j = i;
         }
     }
-    Discos[j].Upload_Blocks(Table);
+    Discos[j].Upload_Blocks(Discos[j].CargarEnBloques(true));
 }
 
 void SGBD::Select()

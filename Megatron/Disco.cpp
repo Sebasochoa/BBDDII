@@ -3,10 +3,11 @@
 #include <filesystem>
 #include <fstream>
 #include <vector>
+#include <set>
 
 namespace fs = std::filesystem;
 
-Disco::Disco(const std::string &NDisco)
+Disco::Disco(const std::string &NDisco, bool usarPorDefecto)
 {
     Name = NDisco;
     Plates = 4;
@@ -14,6 +15,7 @@ Disco::Disco(const std::string &NDisco)
     Tracks = 3;
     Sectors = 4;
     CapSection = 1000;
+    SectoresPorBloque = 2;
 
     std::string directorio = fs::current_path().string();
     std::string dirNDisco = directorio + "/" + NDisco;
@@ -45,6 +47,119 @@ Disco::Disco(const std::string &NDisco)
             }
         }
     }
+
+    std::ofstream meta(fs::current_path().string() + "/Discos/" + Name + "/metadata.txt");
+    meta << "CapSection=" << CapSection << "\n";
+    meta << "SectoresPorBloque=" << SectoresPorBloque << "\n";
+    meta.close();
+}
+
+Disco::Disco(const std::string &NDisco)
+{
+    Name = NDisco;
+    Plates = Surfaces = Tracks = Sectors = 0;
+    CapSection = 0;
+
+    std::string rutaBase = fs::current_path().string() + "/Discos/" + NDisco;
+    if (!fs::exists(rutaBase))
+        return;
+
+    int maxPlato = 0, maxPista = 0, maxSector = 0;
+    bool archivoCapacidadLeido = false;
+
+    for (const auto &plato : fs::directory_iterator(rutaBase))
+    {
+        if (!plato.is_directory() || plato.path().filename().string().rfind("Plato_", 0) != 0)
+            continue;
+
+        int p = std::stoi(plato.path().filename().string().substr(6));
+        maxPlato = std::max(maxPlato, p);
+
+        const auto &superficiePath = plato.path() / "Superficie_1";
+        if (!fs::exists(superficiePath))
+            continue;
+
+        for (const auto &pista : fs::directory_iterator(superficiePath))
+        {
+            if (!pista.is_directory() || pista.path().filename().string().rfind("Pista_", 0) != 0)
+                continue;
+            int t = std::stoi(pista.path().filename().string().substr(6));
+            maxPista = std::max(maxPista, t);
+
+            for (const auto &sector : fs::directory_iterator(pista.path()))
+            {
+                if (!sector.is_directory() || sector.path().filename().string().rfind("Sector_", 0) != 0)
+                    continue;
+                int se = std::stoi(sector.path().filename().string().substr(7));
+                maxSector = std::max(maxSector, se);
+
+                if (!archivoCapacidadLeido)
+                {
+                    for (const auto &archivo : fs::directory_iterator(sector.path()))
+                    {
+                        if (archivo.is_regular_file() && archivo.path().extension() == ".txt")
+                        {
+                            std::ifstream in(archivo.path());
+                            if (in.is_open())
+                            {
+                                std::string linea;
+                                std::getline(in, linea);
+                                try
+                                {
+                                    CapSection = std::stoi(linea);
+                                    archivoCapacidadLeido = true;
+                                }
+                                catch (...)
+                                {
+                                }
+                                in.close();
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Plates = maxPlato;
+    Surfaces = 2; // fijo
+    Tracks = maxPista;
+    Sectors = maxSector;
+    std::ifstream meta(fs::current_path().string() + "/Discos/" + Name + "/metadata.txt");
+    std::string linea;
+    std::cout << linea;
+    while (std::getline(meta, linea))
+    {
+        if (linea.rfind("CapSection=", 0) == 0)
+            CapSection = std::stoi(linea.substr(11));
+        else if (linea.rfind("SectoresPorBloque=", 0) == 0)
+            SectoresPorBloque = std::stoi(linea.substr(18));
+    }
+    meta.close();
+
+    // Inicializar bloques con los valores recuperados
+    int capacidadBloque = CapSection * SectoresPorBloque;
+    Blocks.set_Capacity(capacidadBloque);
+
+    // Contar cantidad de bloques (archivos .txt) en la carpeta de bloques
+    std::string rutaBloques = fs::current_path().string() + "/Discos/Bloques_" + Name;
+    int numBloques = 0;
+    if (fs::exists(rutaBloques))
+    {
+        for (const auto &archivo : fs::directory_iterator(rutaBloques))
+        {
+            if (archivo.path().extension() == ".txt")
+                ++numBloques;
+        }
+    }
+    Blocks.set_NumBlocks(numBloques);
+    Blocks.set_NameDisk(Name);
+
+    std::cout << "Disco '" << Name << "' cargado desde almacenamiento:\n";
+    std::cout << "Platos: " << Plates << "  Superficies: " << Surfaces
+              << "  Pistas: " << Tracks << "  Sectores: " << Sectors
+              << "  Capacidad por sector: " << CapSection << " bytes\n";
 }
 
 Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks, int NSections, int Capacity, int NumSectorxBloque)
@@ -55,6 +170,7 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
     Tracks = NTracks;
     Sectors = NSections;
     CapSection = Capacity;
+    SectoresPorBloque = NumSectorxBloque;
 
     std::string directorio = fs::current_path().string();
     std::string dirNDisco = directorio + "/Discos";
@@ -98,8 +214,12 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
     std::cout << "Disco " << NDisco << ": \n";
     std::cout << "Capacidad: " << MaxCapacity() << " B\n";
     std::cout << "Capacidad del Bloque: " << NumSectorxBloque * Capacity << " B\n";
-    std::cout << "Bloques x Pista: " << (Capacity * Sectors) / (NumSectorxBloque * Capacity) << "\n";
-    std::cout << "Bloques x Plato: " << (Capacity * Sectors * Surfaces * Tracks) / (NumSectorxBloque * Capacity) << "\n";
+    std::cout << "Capacidad del Sector: " << Capacity << " B\n";
+
+    std::ofstream meta(fs::current_path().string() + "/Discos/" + Name + "/metadata.txt");
+    meta << "CapSection=" << CapSection << "\n";
+    meta << "SectoresPorBloque=" << SectoresPorBloque << "\n";
+    meta.close();
 }
 
 std::string Disco::Get_Name()
@@ -204,113 +324,90 @@ int Disco::FullCapacity(std::string NDisco)
 
 bool Disco::IsRecord_inTable(std::string linea, std::string NTabla)
 {
-    size_t posFinal = linea.find_first_of('#');
-    if (posFinal == std::string::npos)
-    {
+    size_t pos1 = linea.find('#');
+    if (pos1 == std::string::npos)
         return false;
-    }
+    size_t pos2 = linea.find('#', pos1 + 1);
+    if (pos2 == std::string::npos)
+        return false;
+    size_t pos3 = linea.find('#', pos2 + 1);
+    if (pos3 == std::string::npos)
+        return false;
 
-    size_t posInicio = 0;
-
-    std::string segmento = linea.substr(posInicio, posFinal);
-
-    return segmento == NTabla;
+    std::string tabla = linea.substr(pos2 + 1, pos3 - pos2 - 1);
+    return tabla == NTabla;
 }
 
 void Disco::Upload_Blocks(std::string Name_Table)
 {
-
     fs::path currentPath = fs::current_path();
+    std::string dirBloques = (currentPath / "Discos" / ("Bloques_" + Name)).string();
 
-    std::string dirDisck = (currentPath / Name / "Bloques" / "Bloque_").string();
-    int m = 1;
-    std::ifstream Upload_File;
-    bool moreLines = true;
-    std::string Upload_File_Line;
-    int contador = 1;
+    int registrosCargados = 0;
+    int registrosPendientes = 0;
+    int bloqueIndex = 1;
+    std::vector<std::string> registros;
 
-    auto open_next_block = [&]()
+    // Leer todos los registros de todos los bloques
+    while (true)
     {
-        Upload_File.open(dirDisck + std::to_string(m) + ".txt");
-        if (Upload_File)
+        std::string pathBloque = dirBloques + "/Bloque_" + std::to_string(bloqueIndex) + ".txt";
+        std::ifstream bloqueFile(pathBloque);
+        if (!bloqueFile.is_open())
+            break;
+
+        std::string primeraLinea;
+        std::getline(bloqueFile, primeraLinea); // Salta la línea de capacidad del bloque
+        std::string registro;
+        while (std::getline(bloqueFile, registro))
         {
-            if (!std::getline(Upload_File, Upload_File_Line))
+            registros.push_back(registro);
+        }
+        bloqueFile.close();
+        bloqueIndex++;
+    }
+
+    int ubicaciones = Plates * Surfaces * Tracks * Sectors;
+    for (int idx = 0; idx < registros.size(); ++idx)
+    {
+        int pos = idx % ubicaciones;
+        int plato = pos % Plates + 1;
+        int superficie = (pos / Plates) % Surfaces + 1;
+        int pista = (pos / (Plates * Surfaces)) % Tracks + 1;
+        int sector = (pos / (Plates * Surfaces * Tracks)) % Sectors + 1;
+
+        fs::path archivoSector = currentPath / "Discos" / Name /
+                                 ("Plato_" + std::to_string(plato)) /
+                                 ("Superficie_" + std::to_string(superficie)) /
+                                 ("Pista_" + std::to_string(pista)) /
+                                 ("Sector_" + std::to_string(sector)) /
+                                 (std::to_string(plato) + std::to_string(superficie) + std::to_string(pista) + std::to_string(sector) + ".txt");
+
+        int capacidadRestante = RemainCapacity(archivoSector.string());
+        if (capacidadRestante >= static_cast<int>(registros[idx].length()) + 1)
+        { // +1 por salto de línea
+            std::ofstream sectorOut(archivoSector, std::ios::app);
+            if (sectorOut.is_open())
             {
-                moreLines = false;
+                sectorOut << registros[idx] << "\n";
+                sectorOut.close();
+                First_Line(archivoSector.string(), std::to_string(capacidadRestante - registros[idx].length() - 1));
+                registrosCargados++;
+            }
+            else
+            {
+                registrosPendientes++;
             }
         }
         else
         {
-            moreLines = false;
-        }
-    };
-
-    open_next_block();
-    std::string foult_line;
-    for (int i = 1; i <= Plates && moreLines; ++i)
-    {
-        fs::path Directory_Plate = currentPath / Name / ("Plato_" + std::to_string(i));
-
-        for (int j = 1; j <= Surfaces && moreLines; ++j)
-        {
-            fs::path Directory_Surface = Directory_Plate / ("Superficie_" + std::to_string(j));
-
-            for (int k = 1; k <= Tracks && moreLines; ++k)
-            {
-                fs::path Directory_Track = Directory_Surface / ("Pista_" + std::to_string(k));
-
-                for (int l = 1; l <= Sectors && moreLines; ++l)
-                {
-                    fs::path Directory_Sector = Directory_Track / ("Sector_" + std::to_string(l));
-                    fs::path Directory_File = Directory_Sector / (std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt");
-
-                    std::ofstream txt(Directory_File, std::ios::app);
-
-                    while (Upload_File.is_open() && std::getline(Upload_File, Upload_File_Line))
-                    {
-                        if (IsRecord_inTable(Upload_File_Line, Name_Table))
-                        {
-                            if (!foult_line.empty())
-                            {
-                                int longitud = static_cast<int>(foult_line.length());
-                                int Vacio = RemainCapacity(Directory_File.string());
-
-                                if (Vacio > longitud)
-                                {
-                                    txt << Corregir(foult_line, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
-                                    First_Line(Directory_File.string(), std::to_string(Vacio - longitud));
-                                    ++contador;
-                                }
-                                foult_line.clear();
-                            }
-
-                            int longitud = static_cast<int>(Upload_File_Line.length());
-                            int Vacio = RemainCapacity(Directory_File.string());
-
-                            if (Vacio > longitud)
-                            {
-                                txt << Corregir(Upload_File_Line, contador, std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l)) << std::endl;
-                                First_Line(Directory_File.string(), std::to_string(Vacio - longitud));
-                                ++contador;
-                            }
-                            else
-                            {
-                                foult_line = Upload_File_Line;
-                                break;
-                            }
-                        }
-                    }
-
-                    if (Upload_File.eof())
-                    {
-                        Upload_File.close();
-                        ++m;
-                        open_next_block();
-                    }
-                }
-            }
+            registrosPendientes++;
         }
     }
+
+    std::cout << "Registros cargados al disco: " << registrosCargados << "\n";
+    if (registrosPendientes > 0)
+        std::cout << "Registros pendientes por falta de espacio: " << registrosPendientes << "\n";
 }
 
 int Disco::RemainCapacity(std::string Archivo)
@@ -362,34 +459,36 @@ void Disco::First_Line(std::string Directory_File, std::string Replace_Line)
     Output_File << Content;
     Output_File.close();
 }
-/*
-int Disco::GetSectorCapacity()
+
+std::string Disco::CargarEnBloques(bool formatoFijo)
 {
-    std::string Directory = fs::current_path().string() + "/" + Name;
+    std::string archivo, nombreTabla;
+    std::cout << "Ingrese el nombre del archivo a cargar: ";
+    std::cin >> archivo;
+    std::cout << "Ingrese nombre a su Relacion: ";
+    std::cin >> nombreTabla;
+    Blocks.CargarDesdeArchivo(archivo + ".csv", nombreTabla, formatoFijo);
+    return nombreTabla;
+}
 
-    for (size_t i = 0; i < Plates; i++)
+void Disco::Clear_Blocks()
+{
+    int capacidadBloque = CapSection * SectoresPorBloque;
+    std::string rutaBloques = fs::current_path().string() + "/Discos/Bloques_" + Name;
+
+    if (!fs::exists(rutaBloques))
+        return;
+
+    for (const auto &archivo : fs::directory_iterator(rutaBloques))
     {
-        std::string Directory_Plate = Directory + "/Plato_" + std::to_string(i);
-
-        for (size_t j = 0; j < Surfaces; j++)
+        if (archivo.path().extension() == ".txt")
         {
-            std::string Directory_Surface = Directory_Plate + "/Superficie_" + std::to_string(j);
-
-            for (size_t k = 0; k < Tracks; k++)
+            std::ofstream limpiar(archivo.path(), std::ios::trunc);
+            if (limpiar.is_open())
             {
-
-                std::string Directory_Track = Directory_Surface + "/Pista_" + std::to_string(k);
-                for (size_t l = 0; l < Sectors; l++)
-                {
-                    std::string Directory_Sector = Directory_Track + "/Sector_" + std::to_string(l);
-                    std::ifstream Directory_File(Directory_Sector);
-                    std::string File_Line;
-                    getline(Directory_File, File_Line);
-                    std::cout << "Capacidad del Sector: " << File_Line << std::endl;
-                    continue;
-
-                }
+                limpiar << std::to_string(capacidadBloque) << "\n";
+                limpiar.close();
             }
         }
     }
-}*/
+}
