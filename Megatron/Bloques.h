@@ -3,7 +3,6 @@
 #include <string>
 #include <vector>
 
-
 class Bloques
 {
 private:
@@ -22,6 +21,8 @@ public:
 
     bool CargarDesdeArchivo(const std::string &, const std::string &, bool);
     bool CargarRegistros(const std::vector<std::string> &);
+    std::vector<std::string> FiltrarRegistros(const std::string &nombreDisco, const std::string &nombreTabla, const std::string &campoFiltro = "", const std::string &operador = "", const std::string &valorFiltro = "");
+    void MostrarRegistros(const std::vector<std::string> &registros, const std::string &nombreDisco, const std::string &nombreTabla);
 };
 
 #endif

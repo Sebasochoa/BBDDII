@@ -9,7 +9,7 @@ SGBD::SGBD()
 
     if (!fs::exists(rutaDiscos))
     {
-        std::cout << "No se encontró la carpeta de discos. Se creará automáticamente al crear uno.\n";
+        std::cout << "No se encontro la carpeta de discos. Se creara automaticamente al crear uno.\n";
         return;
     }
 
@@ -26,7 +26,8 @@ SGBD::SGBD()
         }
     }
 
-    for (auto& disco : Discos) {
+    for (auto &disco : Discos)
+    {
         disco.Clear_Blocks();
     }
 
@@ -34,7 +35,6 @@ SGBD::SGBD()
     {
         std::cout << "No se encontraron discos existentes.\n";
     }
-
 }
 
 SGBD::~SGBD()
@@ -69,46 +69,61 @@ void SGBD::Cargar()
     std::cout << "Ingrese si desea registros de longitud variable o estatica(E o V):";
     std::cin >> formato;
 
-    int j = 0;
-    for (size_t i = 0; i < Discos.size(); i++)
-    {
-        if (name_disk == Discos[i].Get_Name())
-        {
-            j = i;
-        }
-    }
-    Discos[j].Upload_Blocks(Discos[j].CargarEnBloques(true));
+    bool esfijo = formato == "E" ? true : false;
+
+    Disco A = BuscarDisco(name_disk);
+    A.Upload_Blocks(A.CargarEnBloques(esfijo));
 }
 
 void SGBD::Select()
 {
-    std::string name_disk;
+    std::string name_disk, nEsquema;
     std::cout << "Ingrese el Disco de donde quiere seleccionar la Tabla: ";
     std::cin >> name_disk;
-    Records.Select_all(name_disk);
+    std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
+    std::cin >> nEsquema;
+    Disco A = BuscarDisco(name_disk);
+    A.Clear_Blocks();
+    A.LlenarBloquesConRegistros();
+    auto resultados = A.Blocks.FiltrarRegistros(name_disk, nEsquema);
+    A.Blocks.MostrarRegistros(resultados, name_disk, nEsquema);
 }
 
 void SGBD::Select_Discriminado()
 {
-    std::string name_disk, name_atribute, sign, name_squeme;
-    int valor;
+    std::string name_disk, name_atribute, sign, name_squeme, valor;
     std::cout << "Ingrese el Disco de donde quiere seleccionar la Tabla: ";
     std::cin >> name_disk;
     std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
     std::cin >> name_squeme;
     std::cout << "Ingrese el Atributo a seleccionar: ";
     std::cin >> name_atribute;
-    std::cout << "Ingrese signo con el que seleccionara el atributo ( >, <, =) ";
+    std::cout << "Ingrese signo con el que seleccionara el atributo ( >, <, ==): ";
     std::cin >> sign;
-    std::cout << "Ingrese el valor que desea seleccionar ";
+    std::cout << "Ingrese el valor que desea seleccionar: ";
     std::cin >> valor;
-    Records.Select_(name_squeme, name_atribute, sign, valor, name_disk);
+    Disco A = BuscarDisco(name_disk);
+    A.Clear_Blocks();
+    A.LlenarBloquesConRegistros();
+    auto resultados = A.Blocks.FiltrarRegistros(name_disk, name_squeme, name_atribute, sign, valor);
+    int opc = -1;
+    std::cout << "¿Desea mostrar los registros o guardarlos en disco?\n1.Mostrar\n2.Guardar\nIngrese la opcion: ";
+    std::cin >> opc;
+    switch (opc)
+    {
+    case 1:
+        A.Blocks.MostrarRegistros(resultados, name_disk, name_squeme);
+        break;
+    case 2:
+        A.GuardarRegistrosComoNuevaTabla(resultados, name_squeme, name_atribute, sign, valor);
+    default:
+        break;
+    }
 }
 
 void SGBD::Select_Discriminado_Archivo()
 {
-    std::string name_disk, name_atribute, sign, name_squeme;
-    int valor;
+    std::string name_disk, name_atribute, sign, name_squeme, valor;
     std::cout << "Ingrese el Disco de donde quiere seleccionar la Tabla: ";
     std::cin >> name_disk;
     std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
@@ -119,7 +134,10 @@ void SGBD::Select_Discriminado_Archivo()
     std::cin >> sign;
     std::cout << "Ingrese el valor que desea seleccionar ";
     std::cin >> valor;
-    Records.SelectArchivo(name_squeme, name_atribute, sign, valor, name_disk);
+    Disco A = BuscarDisco(name_disk);
+    A.Clear_Blocks();
+    A.LlenarBloquesConRegistros();
+    auto resultados = A.Blocks.FiltrarRegistros(name_disk, name_squeme, name_atribute, sign, valor);
 }
 
 void SGBD::Buscar_reemplazar()
@@ -131,4 +149,16 @@ void SGBD::Buscar_reemplazar()
     std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
     std::cin >> name_squeme;
     Records.ReemplazarRegistro(name_disk, name_squeme);
+}
+
+Disco SGBD::BuscarDisco(std::string Name_Disk)
+{
+    for (size_t i = 0; i < Discos.size(); i++)
+    {
+        if (Name_Disk == Discos[i].Get_Name())
+        {
+            return Discos[i];
+        }
+    }
+    return Disco();
 }

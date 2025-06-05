@@ -34,7 +34,7 @@ int main()
             A.Select();
             break;
         case 4:
-            A.Select_Discriminado_Archivo();
+            A.Select_Discriminado();
             break;
         case 5:
             opc = -1;

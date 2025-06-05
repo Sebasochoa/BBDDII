@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <iostream>
 #include <queue>
+#include <iomanip>
 
 namespace fs = std::filesystem;
 
@@ -307,4 +308,268 @@ bool Bloques::CargarRegistros(const std::vector<std::string> &registros)
     }
 
     return colaRegistros.empty();
+}
+
+// Asume estructura simple: campo#tipo#longitud#...#FI/VA
+struct Campo
+{
+    std::string nombre;
+    std::string tipo;
+    int longitud;
+};
+
+// Extrae el esquema de un archivo
+std::vector<Campo> LeerEsquema(const std::string &nombreDisco, const std::string &nombreTabla, std::string &formato)
+{
+    std::vector<Campo> esquema;
+    std::string ruta = std::filesystem::current_path().string() + "/Discos/" + nombreDisco + "/Esquemas/" + nombreTabla + ".esq";
+    std::ifstream archivo(ruta);
+    std::string linea;
+    if (!archivo.is_open())
+        return esquema;
+    std::getline(archivo, linea);
+    archivo.close();
+
+    std::vector<std::string> partes;
+    std::stringstream ss(linea);
+    std::string temp;
+    while (std::getline(ss, temp, '#'))
+        partes.push_back(temp);
+
+    // partes: [tabla, campo1, tipo1, long1, campo2, tipo2, long2, ..., formato]
+    for (size_t i = 1; i + 2 < partes.size() - 1; i += 3)
+    {
+        esquema.push_back({partes[i], partes[i + 1], std::stoi(partes[i + 2])});
+    }
+    formato = partes.back();
+    return esquema;
+}
+
+// Extrae los campos de un registro en formato FI
+std::vector<std::string> ParsearRegistroFI(const std::string &reg, const std::vector<Campo> &esquema)
+{
+    // Salta los campos de sistema: bloqueID, id, nombreTabla
+    std::vector<std::string> campos;
+    size_t ini = 0;
+    int saltar = 3;
+    for (int i = 0; i < saltar; ++i)
+    {
+        size_t p = reg.find('#', ini);
+        if (p == std::string::npos)
+            return campos;
+        ini = p + 1;
+    }
+    // Extraer cada campo por longitud fija
+    for (const auto &c : esquema)
+    {
+        campos.push_back(reg.substr(ini, c.longitud));
+        ini += c.longitud;
+    }
+    return campos;
+}
+
+// Extrae los campos de un registro en formato VA (usa | como separador)
+std::vector<std::string> ParsearRegistroVA(const std::string &reg, const std::vector<Campo> &esquema)
+{
+    std::vector<std::string> campos;
+    size_t ini = 0;
+    int saltar = 3;
+    for (int i = 0; i < saltar; ++i)
+    {
+        size_t p = reg.find('#', ini);
+        if (p == std::string::npos)
+            return campos;
+        ini = p + 1;
+    }
+    size_t fin = reg.find('#', ini);
+    std::string data = reg.substr(ini, fin - ini);
+    std::stringstream ss(data);
+    std::string temp;
+    while (std::getline(ss, temp, '|'))
+    {
+        if (!temp.empty())
+            campos.push_back(temp);
+    }
+    return campos;
+}
+
+std::string Trim(const std::string &str)
+{
+    size_t first = str.find_first_not_of(' ');
+    if (first == std::string::npos)
+        return "";
+    size_t last = str.find_last_not_of(' ');
+    return str.substr(first, (last - first + 1));
+}
+
+// Compara dos strings según tipo y operador
+bool Comparar(const std::string &campo, const std::string &tipo, const std::string &op, const std::string &valor)
+{
+    std::string campoLimpio = Trim(campo);
+    if (campoLimpio == "")
+    {
+        return false;
+    }
+    
+    if (tipo == "int")
+    {
+        int a = std::stoi(campoLimpio);
+        int b = std::stoi(valor);
+        if (op == "=")
+            return a == b;
+        if (op == ">")
+            return a > b;
+        if (op == "<")
+            return a < b;
+    }
+    else if (tipo == "float")
+    {
+        float a = std::stof(campoLimpio);
+        float b = std::stof(valor);
+        if (op == "=")
+            return a == b;
+        if (op == ">")
+            return a > b;
+        if (op == "<")
+            return a < b;
+    }
+    else
+    {
+        if (op == "=")
+            return campoLimpio == valor;
+    }
+    return false;
+}
+
+// --- LA FUNCIÓN PRINCIPAL SOLICITADA ---
+std::vector<std::string> Bloques::FiltrarRegistros(const std::string &nombreDisco, const std::string &nombreTabla, const std::string &campoFiltro, const std::string &operador, const std::string &valorFiltro)
+{
+    std::vector<std::string> resultado;
+    std::string formato;
+    auto esquema = LeerEsquema(nombreDisco, nombreTabla, formato);
+
+    // Identificar el índice y tipo del campo filtro
+    int idxFiltro = -1;
+    std::string tipoFiltro = "";
+    if (!campoFiltro.empty())
+    {
+        for (int i = 0; i < esquema.size(); ++i)
+        {
+            if (esquema[i].nombre == campoFiltro)
+            {
+                idxFiltro = i;
+                tipoFiltro = esquema[i].tipo;
+                break;
+            }
+        }
+        if (idxFiltro == -1)
+        {
+            std::cerr << "Campo '" << campoFiltro << "' no encontrado en la tabla.\n";
+            return resultado;
+        }
+    }
+
+    // Recorre todos los bloques
+    std::string rutaBloques = std::filesystem::current_path().string() + "/Discos/Bloques_" + nombreDisco + "/";
+    for (int i = 1;; ++i)
+    {
+        std::ifstream bloqueIn(rutaBloques + "Bloque_" + std::to_string(i) + ".txt");
+        if (!bloqueIn.is_open())
+            break;
+        std::string dummy;
+        std::getline(bloqueIn, dummy); // saltar la capacidad
+
+        std::string reg;
+        // --- dentro del bucle principal de lectura de registros ---
+        while (std::getline(bloqueIn, reg))
+        {
+            std::vector<std::string> campos;
+            if (formato == "FI")
+                campos = ParsearRegistroFI(reg, esquema);
+            else
+                campos = ParsearRegistroVA(reg, esquema);
+
+            if (campos.empty())
+                continue;
+
+            // Extraer el nombre de la tabla del registro (3er campo entre #)
+            size_t p1 = reg.find('#');
+            size_t p2 = reg.find('#', p1 + 1);
+            size_t p3 = reg.find('#', p2 + 1);
+            std::string tablaEnRegistro = reg.substr(p2 + 1, p3 - p2 - 1);
+            if (tablaEnRegistro != nombreTabla)
+                continue; // Solo selecciona si coincide con la tabla
+
+            if (campoFiltro.empty())
+            {
+                resultado.push_back(reg);
+            }
+            else
+            {
+                if (Comparar(campos[idxFiltro], tipoFiltro, operador, valorFiltro))
+                    resultado.push_back(reg);
+            }
+        }
+    }
+    return resultado;
+}
+
+void Bloques::MostrarRegistros(const std::vector<std::string> &registros, const std::string &nombreDisco, const std::string &nombreTabla)
+{
+    // Leer el esquema y formato
+    std::string formato;
+    auto esquema = LeerEsquema(nombreDisco, nombreTabla, formato);
+    if (esquema.empty())
+    {
+        std::cout << "No se pudo cargar el esquema de la tabla.\n";
+        return;
+    }
+
+    // Títulos de columna
+    std::cout << "+";
+    for (const auto &campo : esquema)
+    {
+        std::cout << std::setw(std::max(10, (int)campo.nombre.size() + 2)) << std::setfill('-') << "" << "+";
+    }
+    std::cout << "\n|";
+    for (const auto &campo : esquema)
+    {
+        std::cout << std::setw(std::max(10, (int)campo.nombre.size() + 2)) << std::setfill(' ') << campo.nombre << "|";
+    }
+    std::cout << "\n+";
+    for (const auto &campo : esquema)
+    {
+        std::cout << std::setw(std::max(10, (int)campo.nombre.size() + 2)) << std::setfill('-') << "" << "+";
+    }
+    std::cout << "\n";
+
+    // Imprime cada registro con los campos separados
+    for (const auto &reg : registros)
+    {
+        std::vector<std::string> campos;
+        if (formato == "FI")
+            campos = ParsearRegistroFI(reg, esquema);
+        else
+            campos = ParsearRegistroVA(reg, esquema);
+
+        std::cout << "|";
+        for (size_t i = 0; i < esquema.size(); ++i)
+        {
+            std::string valor = (i < campos.size()) ? campos[i] : "";
+            // Para FI, elimina los espacios de relleno
+            if (formato == "FI")
+            {
+                valor.erase(valor.find_last_not_of(' ') + 1);
+            }
+            std::cout << std::setw(std::max(10, (int)esquema[i].nombre.size() + 2)) << std::setfill(' ') << valor << "|";
+        }
+        std::cout << "\n";
+    }
+    // Línea final
+    std::cout << "+";
+    for (const auto &campo : esquema)
+    {
+        std::cout << std::setw(std::max(10, (int)campo.nombre.size() + 2)) << std::setfill('-') << "" << "+";
+    }
+    std::cout << "\n";
 }

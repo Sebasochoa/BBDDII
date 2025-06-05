@@ -7,6 +7,13 @@
 
 namespace fs = std::filesystem;
 
+Disco::Disco()
+{
+    Name = "";
+    Plates = Surfaces = Tracks = Sectors = CapSection = 0;
+    SectoresPorBloque = 0;
+}
+
 Disco::Disco(const std::string &NDisco, bool usarPorDefecto)
 {
     Name = NDisco;
@@ -432,13 +439,6 @@ int Disco::RemainCapacity(std::string Archivo)
     return valor;
 }
 
-std::string Disco::Corregir(std::string linea, int contador, std::string dir)
-{
-    std::string res;
-    res += dir + '#' + std::to_string(contador) + "#" + linea;
-    return res;
-}
-
 void Disco::First_Line(std::string Directory_File, std::string Replace_Line)
 {
     std::ifstream Source_File(Directory_File);
@@ -491,4 +491,165 @@ void Disco::Clear_Blocks()
             }
         }
     }
+}
+
+void Disco::LlenarBloquesConRegistros()
+{
+    // Limpia los bloques primero (para que solo contengan la consulta actual)
+    Clear_Blocks();
+
+    fs::path currentPath = fs::current_path();
+    int capacidadBloque = CapSection * SectoresPorBloque;
+    int bloqueActual = 1;
+    int capacidadRestante = capacidadBloque;
+    std::ofstream bloqueOut;
+
+    // Abre el primer bloque
+    std::string rutaBloque = currentPath.string() + "/Discos/Bloques_" + Name + "/Bloque_" + std::to_string(bloqueActual) + ".txt";
+    bloqueOut.open(rutaBloque, std::ios::trunc);
+    bloqueOut << capacidadRestante << "\n"; // escribe la capacidad al inicio
+
+    for (int i = 1; i <= Plates; ++i)
+    {
+        for (int j = 1; j <= Surfaces; ++j)
+        {
+            for (int k = 1; k <= Tracks; ++k)
+            {
+                for (int l = 1; l <= Sectors; ++l)
+                {
+                    fs::path archivoSector = currentPath / "Discos" / Name /
+                                             ("Plato_" + std::to_string(i)) /
+                                             ("Superficie_" + std::to_string(j)) /
+                                             ("Pista_" + std::to_string(k)) /
+                                             ("Sector_" + std::to_string(l)) /
+                                             (std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt");
+
+                    std::ifstream sectorIn(archivoSector);
+                    if (!sectorIn.is_open())
+                        continue;
+
+                    std::string primeraLinea;
+                    std::getline(sectorIn, primeraLinea); // saltar capacidad
+
+                    std::string registro;
+                    while (std::getline(sectorIn, registro))
+                    {
+                        // Puedes agregar aquí un filtro rápido por tabla si quieres (opcional)
+                        if ((int)registro.length() + 1 > capacidadRestante)
+                        {
+                            // Cierra y abre el siguiente bloque
+                            bloqueOut.close();
+                            ++bloqueActual;
+                            rutaBloque = currentPath.string() + "/Discos/Bloques_" + Name + "/Bloque_" + std::to_string(bloqueActual) + ".txt";
+                            bloqueOut.open(rutaBloque, std::ios::trunc);
+                            capacidadRestante = capacidadBloque;
+                            bloqueOut << capacidadRestante << "\n";
+                        }
+                        bloqueOut << registro << "\n";
+                        capacidadRestante -= ((int)registro.length() + 1);
+                    }
+                    sectorIn.close();
+                }
+            }
+        }
+    }
+    bloqueOut.close();
+}
+
+std::string ReemplazarNombreTablaEnRegistro(const std::string &reg, const std::string &nuevoNombre)
+{
+    // Encuentra las posiciones de los # para ubicar el campo de la tabla
+    size_t p1 = reg.find('#');
+    if (p1 == std::string::npos)
+        return reg;
+    size_t p2 = reg.find('#', p1 + 1);
+    if (p2 == std::string::npos)
+        return reg;
+    size_t p3 = reg.find('#', p2 + 1);
+    if (p3 == std::string::npos)
+        return reg;
+
+    // Reemplaza el campo de la tabla
+    std::string nuevoRegistro = reg.substr(0, p2 + 1) + nuevoNombre + reg.substr(p3);
+    return nuevoRegistro;
+}
+
+void Disco::GuardarRegistrosComoNuevaTabla(const std::vector<std::string> &registros, const std::string &nombreTablaOriginal, const std::string &atributo, const std::string &signo, const std::string &valor)
+{
+    // 1. Nombre de la nueva tabla/esquema
+    std::string nombreTablaNueva = nombreTablaOriginal;
+    if (!atributo.empty() && !signo.empty() && !valor.empty())
+    {
+        nombreTablaNueva += "_" + atributo + signo + valor;
+    }
+    else
+    {
+        nombreTablaNueva += "_filtrada";
+    }
+
+    // 2. Guardar registros filtrados en el disco con el nuevo nombre de tabla
+    fs::path currentPath = fs::current_path();
+    int ubicaciones = Plates * Surfaces * Tracks * Sectors;
+    int registrosCargados = 0, registrosPendientes = 0;
+    for (int idx = 0; idx < registros.size(); ++idx)
+    {
+        int pos = idx % ubicaciones;
+        int plato = pos % Plates + 1;
+        int superficie = (pos / Plates) % Surfaces + 1;
+        int pista = (pos / (Plates * Surfaces)) % Tracks + 1;
+        int sector = (pos / (Plates * Surfaces * Tracks)) % Sectors + 1;
+
+        fs::path archivoSector = currentPath / "Discos" / Name /
+                                 ("Plato_" + std::to_string(plato)) /
+                                 ("Superficie_" + std::to_string(superficie)) /
+                                 ("Pista_" + std::to_string(pista)) /
+                                 ("Sector_" + std::to_string(sector)) /
+                                 (std::to_string(plato) + std::to_string(superficie) + std::to_string(pista) + std::to_string(sector) + ".txt");
+
+        std::string registroModificado = ReemplazarNombreTablaEnRegistro(registros[idx], nombreTablaNueva);
+
+        int capacidadRestante = RemainCapacity(archivoSector.string());
+        if (capacidadRestante >= static_cast<int>(registroModificado.length()) + 1)
+        {
+            std::ofstream sectorOut(archivoSector, std::ios::app);
+            if (sectorOut.is_open())
+            {
+                sectorOut << registroModificado << "\n";
+                sectorOut.close();
+                First_Line(archivoSector.string(), std::to_string(capacidadRestante - registroModificado.length() - 1));
+                registrosCargados++;
+            }
+            else
+            {
+                registrosPendientes++;
+            }
+        }
+        else
+        {
+            registrosPendientes++;
+        }
+    }
+
+    // 3. Copiar el esquema original como base para el nuevo esquema y modificar el nombre
+    std::string rutaEsquemaOrig = currentPath.string() + "/Discos/" + Name + "/Esquemas/" + nombreTablaOriginal + ".esq";
+    std::string rutaEsquemaNuevo = currentPath.string() + "/Discos/" + Name + "/Esquemas/" + nombreTablaNueva + ".esq";
+
+    std::ifstream src(rutaEsquemaOrig);
+    std::string lineaEsquema;
+    std::getline(src, lineaEsquema);
+    src.close();
+
+    // Cambia el nombre de la tabla al inicio del esquema
+    size_t posTab = lineaEsquema.find('#');
+    if (posTab != std::string::npos)
+    {
+        lineaEsquema = nombreTablaNueva + lineaEsquema.substr(posTab);
+    }
+    std::ofstream dst(rutaEsquemaNuevo);
+    dst << lineaEsquema << std::endl;
+    dst.close();
+
+    std::cout << "Registros guardados en la nueva tabla: " << nombreTablaNueva << " (" << registrosCargados << " registros).\n";
+    if (registrosPendientes > 0)
+        std::cout << "Registros pendientes por falta de espacio: " << registrosPendientes << "\n";
 }
