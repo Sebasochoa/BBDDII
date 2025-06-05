@@ -17,5 +17,7 @@ public:
     void Select_Discriminado_Archivo();
     void Buscar_reemplazar();
     Disco BuscarDisco(std::string);
+    void MostrarEstadoDisco();
+    void MostrarSectoresOcupados();
+    void MostrarBloquesOcupados();
 };
-

@@ -162,3 +162,27 @@ Disco SGBD::BuscarDisco(std::string Name_Disk)
     }
     return Disco();
 }
+
+void SGBD::MostrarEstadoDisco() {
+    std::string name_disk;
+    std::cout << "Ingrese el Disco a consultar: ";
+    std::cin >> name_disk;
+    Disco disco = BuscarDisco(name_disk);
+    disco.MostrarResumenCapacidad();
+}
+
+void SGBD::MostrarSectoresOcupados() {
+    std::string name_disk;
+    std::cout << "Ingrese el Disco a consultar: ";
+    std::cin >> name_disk;
+    Disco disco = BuscarDisco(name_disk);
+    disco.MostrarSectoresOcupados();
+}
+
+void SGBD::MostrarBloquesOcupados() {
+    std::string name_disk;
+    std::cout << "Ingrese el Disco a consultar: ";
+    std::cin >> name_disk;
+    Disco disco = BuscarDisco(name_disk);
+    disco.Blocks.MostrarBloquesOcupados();
+}

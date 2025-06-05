@@ -21,8 +21,7 @@ public:
 
     std::string Get_Name();
     int MaxCapacity();
-    int FullCapacity(std::string);
-    bool IsRecord_inTable(std::string, std::string);
+    int FullCapacity();
     void Upload_Blocks(std::string);
     void Clear_Blocks();
     int RemainCapacity(std::string);
@@ -30,6 +29,9 @@ public:
 
     std::string CargarEnBloques(bool);
     void LlenarBloquesConRegistros();
-    void GuardarRegistrosComoNuevaTabla(const std::vector<std::string>& registros, const std::string& nombreTablaOriginal, const std::string& atributo, const std::string& signo, const std::string& valor);
+    void GuardarRegistrosComoNuevaTabla(const std::vector<std::string> &registros, const std::string &nombreTablaOriginal, const std::string &atributo, const std::string &signo, const std::string &valor);
+    void MostrarResumenCapacidad();
+    void MostrarSectoresOcupados();
+    void MostrarUbicacionBloques();
 };
 #endif

@@ -410,7 +410,7 @@ bool Comparar(const std::string &campo, const std::string &tipo, const std::stri
     {
         return false;
     }
-    
+
     if (tipo == "int")
     {
         int a = std::stoi(campoLimpio);
@@ -483,6 +483,13 @@ std::vector<std::string> Bloques::FiltrarRegistros(const std::string &nombreDisc
         // --- dentro del bucle principal de lectura de registros ---
         while (std::getline(bloqueIn, reg))
         {
+            size_t p1 = reg.find('#');
+            size_t p2 = reg.find('#', p1 + 1);
+            size_t p3 = reg.find('#', p2 + 1);
+            std::string tablaEnRegistro = reg.substr(p2 + 1, p3 - p2 - 1);
+            if (tablaEnRegistro != nombreTabla)
+                continue; // Solo selecciona si coincide con la tabla
+
             std::vector<std::string> campos;
             if (formato == "FI")
                 campos = ParsearRegistroFI(reg, esquema);
@@ -491,14 +498,6 @@ std::vector<std::string> Bloques::FiltrarRegistros(const std::string &nombreDisc
 
             if (campos.empty())
                 continue;
-
-            // Extraer el nombre de la tabla del registro (3er campo entre #)
-            size_t p1 = reg.find('#');
-            size_t p2 = reg.find('#', p1 + 1);
-            size_t p3 = reg.find('#', p2 + 1);
-            std::string tablaEnRegistro = reg.substr(p2 + 1, p3 - p2 - 1);
-            if (tablaEnRegistro != nombreTabla)
-                continue; // Solo selecciona si coincide con la tabla
 
             if (campoFiltro.empty())
             {
@@ -572,4 +571,161 @@ void Bloques::MostrarRegistros(const std::vector<std::string> &registros, const 
         std::cout << std::setw(std::max(10, (int)campo.nombre.size() + 2)) << std::setfill('-') << "" << "+";
     }
     std::cout << "\n";
+}
+
+void Bloques::MostrarBloquesOcupados()
+{
+    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
+    std::cout << "Bloques en disco '" << NameDisk << "':" << std::endl;
+
+    for (int i = 1; i <= NumBlocks; ++i)
+    {
+        std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
+        std::ifstream bloqueIn(bloquePath);
+        if (!bloqueIn.is_open())
+            continue;
+
+        std::string linea;
+        std::getline(bloqueIn, linea); // Cabecera con capacidad
+        int capacidadDisponible = std::stoi(linea);
+        int capacidadTotal = Capacity;
+        int capacidadOcupada = capacidadTotal - capacidadDisponible;
+        int registros = 0;
+        while (std::getline(bloqueIn, linea))
+        {
+            if (!linea.empty())
+                registros++;
+        }
+
+        std::cout << "Bloque " << i << ": "
+                  << (registros > 0 ? std::to_string(registros) + " registros, " : "vacio, ")
+                  << capacidadOcupada << "B/" << capacidadTotal << "B (" << (capacidadOcupada * 100 / capacidadTotal) << "% ocupado)" << std::endl;
+    }
+}
+
+void Bloques::MostrarDetalleBloque(int numBloque)
+{
+    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
+    std::string bloquePath = rutaBase + "Bloque_" + std::to_string(numBloque) + ".txt";
+    std::ifstream bloqueIn(bloquePath);
+    if (!bloqueIn.is_open())
+    {
+        std::cout << "No existe el bloque " << numBloque << std::endl;
+        return;
+    }
+    std::string linea;
+    std::getline(bloqueIn, linea);
+    int capacidadDisponible = std::stoi(linea);
+    int capacidadTotal = Capacity;
+    int capacidadOcupada = capacidadTotal - capacidadDisponible;
+    std::cout << "Bloque " << numBloque << ":\n";
+    std::cout << "  Capacidad total: " << capacidadTotal << " B\n";
+    std::cout << "  Capacidad ocupada: " << capacidadOcupada << " B\n";
+    std::cout << "  Capacidad libre: " << capacidadDisponible << " B\n";
+    std::cout << "  Registros:\n";
+    int id = 1;
+    while (std::getline(bloqueIn, linea))
+    {
+        if (!linea.empty())
+            std::cout << "    " << id++ << ": " << linea << std::endl;
+    }
+}
+
+bool Bloques::InsertarRegistroEnBloque(const std::string &registro)
+{
+    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
+    for (int i = 1; i <= NumBlocks; ++i)
+    {
+        std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
+        std::ifstream bloqueIn(bloquePath);
+        if (!bloqueIn.is_open())
+            continue;
+
+        std::string linea;
+        std::getline(bloqueIn, linea);
+        int capacidadDisponible = std::stoi(linea);
+        std::string contenidoBloque((std::istreambuf_iterator<char>(bloqueIn)), std::istreambuf_iterator<char>());
+        bloqueIn.close();
+
+        int tam = static_cast<int>(registro.size());
+        if (tam + 1 > capacidadDisponible)
+            continue; // No cabe en este bloque
+
+        // Sí cabe, escribe el registro aquí
+        std::ofstream bloqueOut(bloquePath);
+        if (!bloqueOut.is_open())
+            continue;
+        capacidadDisponible -= (tam + 1);
+        bloqueOut << capacidadDisponible << "\n"
+                  << registro << "\n"
+                  << contenidoBloque;
+        bloqueOut.close();
+        std::cout << "Registro insertado en el bloque " << i << " del disco " << NameDisk << std::endl;
+        return true;
+    }
+    std::cout << "No hay espacio en ningún bloque para insertar el registro.\n";
+    return false;
+}
+
+bool Bloques::AgregarRegistroManual(const std::string &nombreTabla, const std::vector<std::string> &valores, bool esFijo)
+{
+    // Leer esquema
+    std::string formato;
+    auto esquema = LeerEsquema(NameDisk, nombreTabla, formato);
+    if (esquema.empty())
+    {
+        std::cout << "No se encontro el esquema para la tabla.\n";
+        return false;
+    }
+
+    // Formatear registro
+    std::string registro;
+    if (esFijo)
+    {
+        // Formatear en FI
+        registro = "BLOQUE#0#" + nombreTabla + "#";
+        for (size_t i = 0; i < valores.size(); ++i)
+        {
+            std::string campo = valores[i];
+            int longitud = (i < esquema.size()) ? esquema[i].longitud : 10;
+            if (campo.length() < longitud)
+                registro += std::string(longitud - campo.length(), ' ') + campo;
+            else
+                registro += campo.substr(0, longitud);
+        }
+    }
+    else
+    {
+        // Formato VA
+        std::string datos, metadatos;
+        for (size_t i = 0; i < valores.size(); ++i)
+        {
+            std::string campo = Escape(valores[i]);
+            datos += campo + "|";
+            metadatos += std::to_string(i) + ":" + std::to_string(valores[i].length()) + ";";
+        }
+        registro = "BLOQUE#0#" + nombreTabla + "#" + datos + "#METADATA:" + metadatos;
+    }
+
+    return InsertarRegistroEnBloque(registro);
+}
+
+int Bloques::CapacidadMaximaRegistro()
+{
+    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
+    int maxCap = 0;
+    for (int i = 1; i <= NumBlocks; ++i)
+    {
+        std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
+        std::ifstream bloqueIn(bloquePath);
+        if (!bloqueIn.is_open())
+            continue;
+        std::string linea;
+        std::getline(bloqueIn, linea);
+        int capacidadDisponible = std::stoi(linea);
+        if (capacidadDisponible > maxCap)
+            maxCap = capacidadDisponible;
+    }
+    std::cout << "La capacidad máxima disponible para insertar un registro es: " << maxCap << " bytes.\n";
+    return maxCap;
 }
