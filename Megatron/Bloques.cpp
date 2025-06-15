@@ -750,3 +750,26 @@ bool Bloques::InsertarRegistroEnBloque(const std::string &registro, int bloqueId
     bloque.close();
     return true;
 }
+
+std::vector<std::string> Bloques::LeerTodosLosRegistrosEnBloque(int bloqueId)
+{
+    std::vector<std::string> registros;
+    std::string rutaBloque = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/Bloque_" + std::to_string(bloqueId) + ".txt";
+    std::fstream bloque(rutaBloque, std::ios::in);
+    if (!bloque.is_open())
+        return registros;
+
+    int numSlots, freeOffset;
+    std::vector<std::pair<int, int>> slots;
+    LeerHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
+
+    for (const auto &slot : slots)
+    {
+        bloque.seekg(slot.first, std::ios::beg);
+        std::string data(slot.second, '\0');
+        bloque.read(&data[0], slot.second);
+        registros.push_back(data);
+    }
+    bloque.close();
+    return registros;
+}

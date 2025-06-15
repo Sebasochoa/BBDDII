@@ -72,7 +72,7 @@ void SGBD::Cargar()
     bool esfijo = formato == "E" ? true : false;
 
     Disco A = BuscarDisco(name_disk);
-    A.CargarEnBloques(esfijo);
+    A.CargarRegistrosBloquesADiscoSlotted(A.CargarEnBloques(esfijo));
 }
 
 void SGBD::Select()

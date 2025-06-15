@@ -2,6 +2,7 @@
 #define BLOQUES_H
 #include <string>
 #include <vector>
+#include <fstream>
 
 class Bloques
 {
@@ -30,6 +31,7 @@ public:
     int CapacidadMaximaRegistro();
     void EscribirHeaderSlottedPage(std::fstream &bloque, int numSlots, int freeOffset, const std::vector<std::pair<int, int>> &slots);
     void LeerHeaderSlottedPage(std::fstream &bloque, int &numSlots, int &freeOffset, std::vector<std::pair<int, int>> &slots);
+     std::vector<std::string> LeerTodosLosRegistrosEnBloque(int bloqueId);
 };
 
 #endif

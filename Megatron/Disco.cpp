@@ -49,7 +49,13 @@ Disco::Disco(const std::string &NDisco, bool usarPorDefecto)
                     std::string dirSector = dirPista + "/Sector_" + std::to_string(l);
                     std::string nomArchivo = dirSector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
                     fs::create_directory(dirSector);
-                    std::ofstream archivo(nomArchivo);
+                    std::fstream archivo(nomArchivo, std::ios::out);
+                    if (archivo.is_open())
+                    {
+                        std::vector<std::pair<int, int>> emptySlots;
+                        Blocks.EscribirHeaderSlottedPage(archivo, 0, 0, emptySlots);
+                        archivo.close();
+                    }
                 }
             }
         }
@@ -111,14 +117,17 @@ Disco::Disco(const std::string &NDisco)
                             {
                                 std::string linea;
                                 std::getline(in, linea);
-                                try
+                                if (linea != "SLOTTED_PAGE")
                                 {
-                                    CapSection = std::stoi(linea);
-                                    archivoCapacidadLeido = true;
+                                    try
+                                    {
+                                        CapSection = std::stoi(linea);
+                                    }
+                                    catch (...)
+                                    {
+                                    }
                                 }
-                                catch (...)
-                                {
-                                }
+                                archivoCapacidadLeido = true;
                                 in.close();
                             }
                             break;
@@ -207,10 +216,12 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
                     std::string nomArchivo = dirSector + "/" + std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt";
 
                     fs::create_directory(dirSector);
-                    std::ofstream archivo(nomArchivo);
+                    std::fstream archivo(nomArchivo, std::ios::out);
                     if (archivo.is_open())
                     {
-                        archivo << CapSection << std::endl;
+                        std::vector<std::pair<int, int>> emptySlots;
+                        Blocks.EscribirHeaderSlottedPage(archivo, 0, 0, emptySlots);
+                        archivo.close();
                     }
                 }
             }
@@ -298,41 +309,25 @@ void Disco::CargarRegistrosBloquesADiscoSlotted(std::string Name_Table)
     std::string dirBloques = (currentPath / "Discos" / ("Bloques_" + Name)).string();
 
     std::vector<std::string> registros;
-    int bloqueIndex = 1;
-
-    // Leer todos los registros de todos los bloques slotted page
-    while (true)
+    for (int bloqueIndex = 1; bloqueIndex <= Blocks.get_NumBlocks(); ++bloqueIndex)
     {
-        std::string pathBloque = dirBloques + "/Bloque_" + std::to_string(bloqueIndex) + ".txt";
-        std::ifstream bloqueFile(pathBloque);
-        if (!bloqueFile.is_open())
-            break;
-
-        // Saltar el header slotted page
-        std::string linea;
-        int headerLines = 0;
-        while (std::getline(bloqueFile, linea))
+        auto regs = Blocks.LeerTodosLosRegistrosEnBloque(bloqueIndex);
+        for (const auto &r : regs)
         {
-            if (linea == "#DATA")
-                break;
-            ++headerLines;
+            if (!Name_Table.empty())
+            {
+                size_t p1 = r.find('#');
+                if (p1 == std::string::npos)
+                    continue;
+                size_t p2 = r.find('#', p1 + 1);
+                if (p2 == std::string::npos)
+                    continue;
+                std::string tabla = r.substr(p1 + 1, p2 - p1 - 1);
+                if (tabla != Name_Table)
+                    continue;
+            }
+            registros.push_back(r);
         }
-        // Leer registros a partir de la posición actual
-        std::streampos dataStart = bloqueFile.tellg();
-        bloqueFile.seekg(dataStart);
-
-        // Aquí deberías leer usando la tabla de slots para obtener cada registro válido.
-        // Por simplicidad, suponemos que tienes una función para eso, por ejemplo:
-        // LeerTodosLosRegistrosEnBloque(bloqueIndex);
-        // Los agregas al vector registros.
-        // Aquí solo lo esquematizo, debes implementar esa función real en Bloques:
-        /*
-            auto registrosEnBloque = Bloques::LeerTodosLosRegistrosEnBloque(bloqueIndex);
-            for (const auto& r : registrosEnBloque)
-                registros.push_back(r);
-        */
-
-        bloqueIndex++;
     }
 
     // Llenar los sectores en orden, guardando todo lo que quepa en cada uno
@@ -353,7 +348,6 @@ void Disco::CargarRegistrosBloquesADiscoSlotted(std::string Name_Table)
                                  (std::to_string(plato) + std::to_string(superficie) + std::to_string(pista) + std::to_string(sector) + ".txt");
 
         // Llenar el sector con todos los registros que quepan
-        int capacidadRestante = RemainCapacity(archivoSector.string());
         std::fstream sectorOut(archivoSector, std::ios::in | std::ios::out);
         if (!sectorOut.is_open())
             continue;
@@ -368,7 +362,7 @@ void Disco::CargarRegistrosBloquesADiscoSlotted(std::string Name_Table)
         {
             const std::string &reg = registros[idxReg];
             int tamRegistro = reg.size();
-            if (freeOffset + tamRegistro > capacidadRestante)
+            if (freeOffset + tamRegistro > CapSection)
                 break; // No cabe más
 
             // Insertar registro usando slotted page
@@ -401,23 +395,33 @@ void Disco::CargarRegistrosBloquesADiscoSlotted(std::string Name_Table)
 
 int Disco::RemainCapacity(std::string Archivo)
 {
-    std::ifstream archivo(Archivo);
-    std::string linea, segmento;
-    getline(archivo, linea);
+    std::fstream archivo(Archivo, std::ios::in);
+    if (!archivo.is_open())
+        return 0;
+
+    std::string linea;
+    std::getline(archivo, linea);
+    if (linea == "SLOTTED_PAGE")
+    {
+        int numSlots, freeOffset;
+        std::vector<std::pair<int, int>> slots;
+        Blocks.LeerHeaderSlottedPage(archivo, numSlots, freeOffset, slots);
+        archivo.close();
+        return CapSection - freeOffset;
+    }
+
+    std::string segmento;
     for (size_t i = 0; i < linea.size(); i++)
     {
         if (linea[i] != '-')
-        {
             segmento += linea[i];
-        }
         else
-        {
             break;
-        }
     }
     std::istringstream ss(segmento);
     int valor;
     ss >> valor;
+    archivo.close();
     return valor;
 }
 
