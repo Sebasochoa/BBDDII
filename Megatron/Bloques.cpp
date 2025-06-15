@@ -170,7 +170,7 @@ std::string GenerarEsquema(const std::string &nombreArchivoCSV, const std::strin
 std::string FormatearFI(const std::string &linea, const std::string &esquema, const std::string &tabla, int id)
 {
     std::vector<std::string> valores = SplitCSVLine(linea);
-    std::string resultado =std::to_string(id) + "#" + tabla + "#";
+    std::string resultado = std::to_string(id) + "#" + tabla + "#";
 
     size_t pos = esquema.find('#');
     std::vector<int> longitudes;
@@ -674,6 +674,7 @@ int Bloques::CapacidadMaximaRegistro()
 
 void Bloques::EscribirHeaderSlottedPage(std::fstream &bloque, int numSlots, int freeOffset, const std::vector<std::pair<int, int>> &slots)
 {
+    bloque.seekp(0, std::ios::beg);
     bloque << "SLOTTED_PAGE\n";
     bloque << "NumSlots=" << numSlots << "\n";
     bloque << "FreeSpaceOffset=" << freeOffset << "\n";
@@ -686,69 +687,30 @@ void Bloques::EscribirHeaderSlottedPage(std::fstream &bloque, int numSlots, int 
 
 void Bloques::LeerHeaderSlottedPage(std::fstream &bloque, int &numSlots, int &freeOffset, std::vector<std::pair<int, int>> &slots)
 {
+    bloque.seekg(0, std::ios::beg);
     std::string linea;
-    std::getline(bloque, linea);
-    std::getline(bloque, linea);
+    std::getline(bloque, linea); // SLOTTED_PAGE
+    std::getline(bloque, linea); // NumSlots
     numSlots = std::stoi(linea.substr(linea.find('=') + 1));
-    std::getline(bloque, linea);
+    std::getline(bloque, linea); // FreeSpaceOffset
     freeOffset = std::stoi(linea.substr(linea.find('=') + 1));
     slots.clear();
     for (int i = 0; i < numSlots; ++i)
     {
-        std::getline(bloque, linea);
+        std::getline(bloque, linea); // SlotX
         size_t eq = linea.find('=');
         size_t comma = linea.find(',', eq + 1);
         int offset = std::stoi(linea.substr(eq + 1, comma - eq - 1));
         int size = std::stoi(linea.substr(comma + 1));
         slots.push_back({offset, size});
     }
-    std::getline(bloque, linea);
+    std::getline(bloque, linea); // #DATA
 }
 
 bool Bloques::InsertarRegistroEnBloque(const std::string &registro, int bloqueId)
 {
     std::string rutaBloque = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/Bloque_" + std::to_string(bloqueId) + ".txt";
-    std::fstream bloque(rutaBloque, std::ios::in | std::ios::out);
-    if (!bloque.is_open())
-        return false;
-
-    // Leer el header actual
-    int numSlots, freeOffset;
-    std::vector<std::pair<int, int>> slots;
-    LeerHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
-
-    // Calcular espacio usado (posición actual es inicio de #DATA)
-    int headerSize = (int)bloque.tellg();
-    bloque.seekg(0, std::ios::end);
-    int tamActual = (int)bloque.tellg();
-    int capacidadBloque = Capacity; // Usa la capacidad del bloque, como definiste
-
-    int tamRegistro = (int)registro.size();
-    // Si es el primer registro, freeOffset será headerSize
-    if (freeOffset < headerSize)
-        freeOffset = headerSize;
-
-    if (capacidadBloque < (freeOffset + tamRegistro))
-    {
-        bloque.close();
-        return false; // No hay espacio
-    }
-
-    // Escribir el registro al final actual
-    bloque.seekp(freeOffset, std::ios::beg);
-    bloque.write(registro.c_str(), tamRegistro);
-
-    // Actualizar slots y header
-    slots.push_back({freeOffset, tamRegistro});
-    numSlots++;
-    freeOffset += tamRegistro;
-
-    // Ahora sobreescribe el header (al inicio del archivo)
-    bloque.seekp(0, std::ios::beg);
-    EscribirHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
-
-    bloque.close();
-    return true;
+    return InsertarRegistroEnArchivo(rutaBloque, registro, Capacity);
 }
 
 std::vector<std::string> Bloques::LeerTodosLosRegistrosEnBloque(int bloqueId)
@@ -772,4 +734,68 @@ std::vector<std::string> Bloques::LeerTodosLosRegistrosEnBloque(int bloqueId)
     }
     bloque.close();
     return registros;
+}
+
+bool Bloques::InsertarRegistroEnArchivo(const std::string &ruta, const std::string &registro, int capacidad)
+{
+    std::fstream archivo(ruta, std::ios::in);
+    if (!archivo.is_open())
+        return false;
+
+    int numSlots, freeOffset;
+    std::vector<std::pair<int, int>> slots;
+    LeerHeaderSlottedPage(archivo, numSlots, freeOffset, slots);
+
+    std::vector<std::string> datos;
+    for (const auto &s : slots)
+    {
+        archivo.seekg(s.first, std::ios::beg);
+        std::string d(s.second, '\0');
+        archivo.read(&d[0], s.second);
+        datos.push_back(d);
+    }
+    archivo.close();
+
+    datos.push_back(registro);
+    slots.push_back({0, (int)registro.size()});
+    numSlots++;
+
+    int headerSize = 0;
+    std::string header;
+    int freeOff = 0;
+    while (true)
+    {
+        int offset = headerSize;
+        for (int i = 0; i < numSlots; ++i)
+        {
+            slots[i].first = offset;
+            offset += slots[i].second;
+        }
+        freeOff = offset;
+
+        std::ostringstream oss;
+        oss << "SLOTTED_PAGE\n";
+        oss << "NumSlots=" << numSlots << "\n";
+        oss << "FreeSpaceOffset=" << freeOff << "\n";
+        for (int i = 0; i < numSlots; ++i)
+            oss << "Slot" << i << "=" << slots[i].first << "," << slots[i].second << "\n";
+        oss << "#DATA\n";
+
+        header = oss.str();
+        if ((int)header.size() == headerSize)
+            break;
+        headerSize = (int)header.size();
+    }
+
+    if (freeOff > capacidad)
+        return false;
+
+    std::ofstream out(ruta, std::ios::binary | std::ios::trunc);
+    if (!out.is_open())
+        return false;
+    out.write(header.c_str(), header.size());
+    for (const auto &d : datos)
+        out.write(d.c_str(), d.size());
+    out.close();
+    return true;
 }

@@ -347,44 +347,14 @@ void Disco::CargarRegistrosBloquesADiscoSlotted(std::string Name_Table)
                                  ("Sector_" + std::to_string(sector)) /
                                  (std::to_string(plato) + std::to_string(superficie) + std::to_string(pista) + std::to_string(sector) + ".txt");
 
-        // Llenar el sector con todos los registros que quepan
-        std::fstream sectorOut(archivoSector, std::ios::in | std::ios::out);
-        if (!sectorOut.is_open())
-            continue;
-
-        // Leer header y slots
-        int numSlots, freeOffset;
-        std::vector<std::pair<int, int>> slots;
-        Blocks.LeerHeaderSlottedPage(sectorOut, numSlots, freeOffset, slots);
-
-        bool pudoInsertarAlMenosUno = false;
         while (idxReg < registros.size())
         {
             const std::string &reg = registros[idxReg];
-            int tamRegistro = reg.size();
-            if (freeOffset + tamRegistro > CapSection)
-                break; // No cabe más
-
-            // Insertar registro usando slotted page
-            slots.push_back({freeOffset, tamRegistro});
-            // Ir a la posición del offset y escribir el registro
-            sectorOut.seekp(freeOffset, std::ios::beg);
-            sectorOut.write(reg.c_str(), tamRegistro);
-
-            ++numSlots;
-            freeOffset += tamRegistro;
+            if (!Blocks.InsertarRegistroEnArchivo(archivoSector.string(), reg, CapSection))
+                break;
             ++idxReg;
             ++registrosCargados;
-            pudoInsertarAlMenosUno = true;
         }
-
-        // Actualiza el header con los nuevos slots y offset
-        if (pudoInsertarAlMenosUno)
-        {
-            sectorOut.seekp(0, std::ios::beg);
-            Blocks.EscribirHeaderSlottedPage(sectorOut, numSlots, freeOffset, slots);
-        }
-        sectorOut.close();
     }
 
     registrosPendientes = registros.size() - idxReg;

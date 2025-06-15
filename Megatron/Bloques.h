@@ -27,6 +27,7 @@ public:
     void MostrarBloquesOcupados();
     void MostrarDetalleBloque(int numBloque);
     bool InsertarRegistroEnBloque(const std::string &registro, int bloqueId);
+    bool InsertarRegistroEnArchivo(const std::string &ruta, const std::string &registro, int capacidad);
     bool AgregarRegistroManual(const std::string &nombreTabla, const std::vector<std::string> &valores, bool esFijo);
     int CapacidadMaximaRegistro();
     void EscribirHeaderSlottedPage(std::fstream &bloque, int numSlots, int freeOffset, const std::vector<std::pair<int, int>> &slots);
