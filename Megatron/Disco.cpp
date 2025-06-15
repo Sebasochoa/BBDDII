@@ -135,7 +135,6 @@ Disco::Disco(const std::string &NDisco)
     Sectors = maxSector;
     std::ifstream meta(fs::current_path().string() + "/Discos/" + Name + "/metadata.txt");
     std::string linea;
-    std::cout << linea;
     while (std::getline(meta, linea))
     {
         if (linea.rfind("CapSection=", 0) == 0)
