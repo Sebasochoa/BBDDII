@@ -25,9 +25,11 @@ public:
     void MostrarRegistros(const std::vector<std::string> &registros, const std::string &nombreDisco, const std::string &nombreTabla);
     void MostrarBloquesOcupados();
     void MostrarDetalleBloque(int numBloque);
-    bool InsertarRegistroEnBloque(const std::string &registro);
+    bool InsertarRegistroEnBloque(const std::string &registro, int bloqueId);
     bool AgregarRegistroManual(const std::string &nombreTabla, const std::vector<std::string> &valores, bool esFijo);
     int CapacidadMaximaRegistro();
+    void EscribirHeaderSlottedPage(std::fstream &bloque, int numSlots, int freeOffset, const std::vector<std::pair<int, int>> &slots);
+    void LeerHeaderSlottedPage(std::fstream &bloque, int &numSlots, int &freeOffset, std::vector<std::pair<int, int>> &slots);
 };
 
 #endif

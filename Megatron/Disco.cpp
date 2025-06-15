@@ -293,17 +293,15 @@ int Disco::FullCapacity()
     return capacidadOcupada;
 }
 
-void Disco::Upload_Blocks(std::string Name_Table)
+void Disco::CargarRegistrosBloquesADiscoSlotted(std::string Name_Table)
 {
     fs::path currentPath = fs::current_path();
     std::string dirBloques = (currentPath / "Discos" / ("Bloques_" + Name)).string();
 
-    int registrosCargados = 0;
-    int registrosPendientes = 0;
-    int bloqueIndex = 1;
     std::vector<std::string> registros;
+    int bloqueIndex = 1;
 
-    // Leer todos los registros de todos los bloques
+    // Leer todos los registros de todos los bloques slotted page
     while (true)
     {
         std::string pathBloque = dirBloques + "/Bloque_" + std::to_string(bloqueIndex) + ".txt";
@@ -311,25 +309,42 @@ void Disco::Upload_Blocks(std::string Name_Table)
         if (!bloqueFile.is_open())
             break;
 
-        std::string primeraLinea;
-        std::getline(bloqueFile, primeraLinea); // Salta la línea de capacidad del bloque
-        std::string registro;
-        while (std::getline(bloqueFile, registro))
+        // Saltar el header slotted page
+        std::string linea;
+        int headerLines = 0;
+        while (std::getline(bloqueFile, linea))
         {
-            registros.push_back(registro);
+            if (linea == "#DATA")
+                break;
+            ++headerLines;
         }
-        bloqueFile.close();
+        // Leer registros a partir de la posición actual
+        std::streampos dataStart = bloqueFile.tellg();
+        bloqueFile.seekg(dataStart);
+
+        // Aquí deberías leer usando la tabla de slots para obtener cada registro válido.
+        // Por simplicidad, suponemos que tienes una función para eso, por ejemplo:
+        // LeerTodosLosRegistrosEnBloque(bloqueIndex);
+        // Los agregas al vector registros.
+        // Aquí solo lo esquematizo, debes implementar esa función real en Bloques:
+        /*
+            auto registrosEnBloque = Bloques::LeerTodosLosRegistrosEnBloque(bloqueIndex);
+            for (const auto& r : registrosEnBloque)
+                registros.push_back(r);
+        */
+
         bloqueIndex++;
     }
 
-    int ubicaciones = Plates * Surfaces * Tracks * Sectors;
-    for (int idx = 0; idx < registros.size(); ++idx)
+    // Llenar los sectores en orden, guardando todo lo que quepa en cada uno
+    int registrosCargados = 0, registrosPendientes = 0;
+    size_t idxReg = 0;
+    for (int sectorId = 0; sectorId < Plates * Surfaces * Tracks * Sectors && idxReg < registros.size(); ++sectorId)
     {
-        int pos = idx % ubicaciones;
-        int plato = pos % Plates + 1;
-        int superficie = (pos / Plates) % Surfaces + 1;
-        int pista = (pos / (Plates * Surfaces)) % Tracks + 1;
-        int sector = (pos / (Plates * Surfaces * Tracks)) % Sectors + 1;
+        int plato = sectorId % Plates + 1;
+        int superficie = (sectorId / Plates) % Surfaces + 1;
+        int pista = (sectorId / (Plates * Surfaces)) % Tracks + 1;
+        int sector = (sectorId / (Plates * Surfaces * Tracks)) % Sectors + 1;
 
         fs::path archivoSector = currentPath / "Discos" / Name /
                                  ("Plato_" + std::to_string(plato)) /
@@ -338,29 +353,49 @@ void Disco::Upload_Blocks(std::string Name_Table)
                                  ("Sector_" + std::to_string(sector)) /
                                  (std::to_string(plato) + std::to_string(superficie) + std::to_string(pista) + std::to_string(sector) + ".txt");
 
+        // Llenar el sector con todos los registros que quepan
         int capacidadRestante = RemainCapacity(archivoSector.string());
-        if (capacidadRestante >= static_cast<int>(registros[idx].length()) + 1)
-        { // +1 por salto de línea
-            std::ofstream sectorOut(archivoSector, std::ios::app);
-            if (sectorOut.is_open())
-            {
-                sectorOut << registros[idx] << "\n";
-                sectorOut.close();
-                First_Line(archivoSector.string(), std::to_string(capacidadRestante - registros[idx].length() - 1));
-                registrosCargados++;
-            }
-            else
-            {
-                registrosPendientes++;
-            }
-        }
-        else
+        std::fstream sectorOut(archivoSector, std::ios::in | std::ios::out);
+        if (!sectorOut.is_open())
+            continue;
+
+        // Leer header y slots
+        int numSlots, freeOffset;
+        std::vector<std::pair<int, int>> slots;
+        Blocks.LeerHeaderSlottedPage(sectorOut, numSlots, freeOffset, slots);
+
+        bool pudoInsertarAlMenosUno = false;
+        while (idxReg < registros.size())
         {
-            registrosPendientes++;
+            const std::string &reg = registros[idxReg];
+            int tamRegistro = reg.size();
+            if (freeOffset + tamRegistro > capacidadRestante)
+                break; // No cabe más
+
+            // Insertar registro usando slotted page
+            slots.push_back({freeOffset, tamRegistro});
+            // Ir a la posición del offset y escribir el registro
+            sectorOut.seekp(freeOffset, std::ios::beg);
+            sectorOut.write(reg.c_str(), tamRegistro);
+
+            ++numSlots;
+            freeOffset += tamRegistro;
+            ++idxReg;
+            ++registrosCargados;
+            pudoInsertarAlMenosUno = true;
         }
+
+        // Actualiza el header con los nuevos slots y offset
+        if (pudoInsertarAlMenosUno)
+        {
+            sectorOut.seekp(0, std::ios::beg);
+            Blocks.EscribirHeaderSlottedPage(sectorOut, numSlots, freeOffset, slots);
+        }
+        sectorOut.close();
     }
 
-    std::cout << "Registros cargados al disco: " << registrosCargados << "\n";
+    registrosPendientes = registros.size() - idxReg;
+    std::cout << "Registros cargados al disco (slotted): " << registrosCargados << "\n";
     if (registrosPendientes > 0)
         std::cout << "Registros pendientes por falta de espacio: " << registrosPendientes << "\n";
 }
@@ -434,7 +469,10 @@ void Disco::Clear_Blocks()
             std::ofstream limpiar(archivo.path(), std::ios::trunc);
             if (limpiar.is_open())
             {
-                limpiar << std::to_string(capacidadBloque) << "\n";
+                limpiar << "SLOTTED_PAGE\n";
+                limpiar << "NumSlots=0\n";
+                limpiar << "FreeSpaceOffset=0\n";
+                limpiar << "#DATA\n";
                 limpiar.close();
             }
         }
@@ -443,9 +481,6 @@ void Disco::Clear_Blocks()
 
 void Disco::LlenarBloquesConRegistros()
 {
-    // Limpia los bloques primero (para que solo contengan la consulta actual)
-    Clear_Blocks();
-
     fs::path currentPath = fs::current_path();
     int capacidadBloque = CapSection * SectoresPorBloque;
     int bloqueActual = 1;

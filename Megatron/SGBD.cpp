@@ -72,7 +72,7 @@ void SGBD::Cargar()
     bool esfijo = formato == "E" ? true : false;
 
     Disco A = BuscarDisco(name_disk);
-    A.Upload_Blocks(A.CargarEnBloques(esfijo));
+    A.CargarEnBloques(esfijo);
 }
 
 void SGBD::Select()
@@ -148,7 +148,6 @@ void SGBD::Buscar_reemplazar()
     std::cin >> name_disk;
     std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
     std::cin >> name_squeme;
-    Records.ReemplazarRegistro(name_disk, name_squeme);
 }
 
 Disco SGBD::BuscarDisco(std::string Name_Disk)
@@ -163,7 +162,8 @@ Disco SGBD::BuscarDisco(std::string Name_Disk)
     return Disco();
 }
 
-void SGBD::MostrarEstadoDisco() {
+void SGBD::MostrarEstadoDisco()
+{
     std::string name_disk;
     std::cout << "Ingrese el Disco a consultar: ";
     std::cin >> name_disk;
@@ -171,7 +171,8 @@ void SGBD::MostrarEstadoDisco() {
     disco.MostrarResumenCapacidad();
 }
 
-void SGBD::MostrarSectoresOcupados() {
+void SGBD::MostrarSectoresOcupados()
+{
     std::string name_disk;
     std::cout << "Ingrese el Disco a consultar: ";
     std::cin >> name_disk;
@@ -179,7 +180,8 @@ void SGBD::MostrarSectoresOcupados() {
     disco.MostrarSectoresOcupados();
 }
 
-void SGBD::MostrarBloquesOcupados() {
+void SGBD::MostrarBloquesOcupados()
+{
     std::string name_disk;
     std::cout << "Ingrese el Disco a consultar: ";
     std::cin >> name_disk;

@@ -27,7 +27,11 @@ void Bloques::Initialize(int capacity, int numBlocksx, int maxCapacity, std::str
         std::ofstream archivo(dirBloques);
         if (archivo.is_open())
         {
-            archivo << Capacity << std::endl;
+            archivo << "SLOTTED_PAGE\n";
+            archivo << "NumSlots=0\n";
+            archivo << "FreeSpaceOffset=0\n";
+            archivo << "#DATA\n";
+            archivo.close();
         }
     }
 }
@@ -163,10 +167,10 @@ std::string GenerarEsquema(const std::string &nombreArchivoCSV, const std::strin
     return esquema;
 }
 
-std::string FormatearFI(const std::string &linea, const std::string &esquema, const std::string &tabla, int id, const std::string &bloqueID)
+std::string FormatearFI(const std::string &linea, const std::string &esquema, const std::string &tabla, int id)
 {
     std::vector<std::string> valores = SplitCSVLine(linea);
-    std::string resultado = bloqueID + "#" + std::to_string(id) + "#" + tabla + "#";
+    std::string resultado =std::to_string(id) + "#" + tabla + "#";
 
     size_t pos = esquema.find('#');
     std::vector<int> longitudes;
@@ -210,7 +214,7 @@ std::string Escape(const std::string &campo)
     return r;
 }
 
-std::string FormatearVA(const std::string &linea, const std::string &tabla, int id, const std::string &bloqueID)
+std::string FormatearVA(const std::string &linea, const std::string &tabla, int id)
 {
     std::vector<std::string> campos = SplitCSVLine(linea);
     std::string datos, metadatos;
@@ -222,7 +226,7 @@ std::string FormatearVA(const std::string &linea, const std::string &tabla, int 
         metadatos += std::to_string(i) + ":" + std::to_string(campos[i].length()) + ";";
     }
 
-    return bloqueID + "#" + std::to_string(id) + "#" + tabla + "#" + datos + "#METADATA:" + metadatos;
+    return std::to_string(id) + "#" + tabla + "#" + datos + "#METADATA:" + metadatos;
 }
 
 bool Bloques::CargarDesdeArchivo(const std::string &nombreArchivoCSV, const std::string &nombreTabla, bool esFormatoFijo)
@@ -251,9 +255,9 @@ bool Bloques::CargarDesdeArchivo(const std::string &nombreArchivoCSV, const std:
     {
         std::string registro;
         if (esFormatoFijo)
-            registro = FormatearFI(linea, esquema, nombreTabla, id, "BLOQUE");
+            registro = FormatearFI(linea, esquema, nombreTabla, id);
         else
-            registro = FormatearVA(linea, nombreTabla, id, "BLOQUE");
+            registro = FormatearVA(linea, nombreTabla, id);
 
         registrosFormateados.push_back(registro);
         id++;
@@ -265,49 +269,23 @@ bool Bloques::CargarDesdeArchivo(const std::string &nombreArchivoCSV, const std:
 
 bool Bloques::CargarRegistros(const std::vector<std::string> &registros)
 {
-    std::queue<std::string> colaRegistros;
-    for (const auto &r : registros)
-        colaRegistros.push(r);
-
-    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
-
-    for (int i = 1; i <= NumBlocks && !colaRegistros.empty(); ++i)
+    size_t idxReg = 0;
+    for (; idxReg < registros.size(); ++idxReg)
     {
-        std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
-
-        std::ifstream bloqueIn(bloquePath);
-        if (!bloqueIn.is_open())
-            continue;
-
-        std::string linea;
-        std::getline(bloqueIn, linea);
-        int capacidadDisponible = std::stoi(linea);
-        std::string contenidoBloque((std::istreambuf_iterator<char>(bloqueIn)), std::istreambuf_iterator<char>());
-        bloqueIn.close();
-
-        std::ofstream bloqueOut(bloquePath);
-        if (!bloqueOut.is_open())
-            continue;
-
-        std::ostringstream nuevoContenido;
-        while (!colaRegistros.empty())
+        bool insertado = false;
+        // Prueba en cada bloque hasta insertarlo
+        for (int bloqueId = 1; bloqueId <= NumBlocks; ++bloqueId)
         {
-            const std::string &registro = colaRegistros.front();
-            int tam = static_cast<int>(registro.size());
-            if (tam + 1 > capacidadDisponible)
+            if (InsertarRegistroEnBloque(registros[idxReg], bloqueId))
+            {
+                insertado = true;
                 break;
-
-            nuevoContenido << registro << '\n';
-            capacidadDisponible -= (tam + 1); // +1 por el salto de línea
-            colaRegistros.pop();
+            }
         }
-
-        bloqueOut << capacidadDisponible << "\n"
-                  << nuevoContenido.str() << contenidoBloque;
-        bloqueOut.close();
+        if (!insertado)
+            break; // Ya no hay espacio en ningún bloque
     }
-
-    return colaRegistros.empty();
+    return idxReg == registros.size(); // True si todos fueron insertados
 }
 
 // Asume estructura simple: campo#tipo#longitud#...#FI/VA
@@ -631,42 +609,6 @@ void Bloques::MostrarDetalleBloque(int numBloque)
     }
 }
 
-bool Bloques::InsertarRegistroEnBloque(const std::string &registro)
-{
-    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
-    for (int i = 1; i <= NumBlocks; ++i)
-    {
-        std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
-        std::ifstream bloqueIn(bloquePath);
-        if (!bloqueIn.is_open())
-            continue;
-
-        std::string linea;
-        std::getline(bloqueIn, linea);
-        int capacidadDisponible = std::stoi(linea);
-        std::string contenidoBloque((std::istreambuf_iterator<char>(bloqueIn)), std::istreambuf_iterator<char>());
-        bloqueIn.close();
-
-        int tam = static_cast<int>(registro.size());
-        if (tam + 1 > capacidadDisponible)
-            continue; // No cabe en este bloque
-
-        // Sí cabe, escribe el registro aquí
-        std::ofstream bloqueOut(bloquePath);
-        if (!bloqueOut.is_open())
-            continue;
-        capacidadDisponible -= (tam + 1);
-        bloqueOut << capacidadDisponible << "\n"
-                  << registro << "\n"
-                  << contenidoBloque;
-        bloqueOut.close();
-        std::cout << "Registro insertado en el bloque " << i << " del disco " << NameDisk << std::endl;
-        return true;
-    }
-    std::cout << "No hay espacio en ningún bloque para insertar el registro.\n";
-    return false;
-}
-
 bool Bloques::AgregarRegistroManual(const std::string &nombreTabla, const std::vector<std::string> &valores, bool esFijo)
 {
     // Leer esquema
@@ -707,7 +649,7 @@ bool Bloques::AgregarRegistroManual(const std::string &nombreTabla, const std::v
         registro = "BLOQUE#0#" + nombreTabla + "#" + datos + "#METADATA:" + metadatos;
     }
 
-    return InsertarRegistroEnBloque(registro);
+    return false;
 }
 
 int Bloques::CapacidadMaximaRegistro()
@@ -728,4 +670,83 @@ int Bloques::CapacidadMaximaRegistro()
     }
     std::cout << "La capacidad máxima disponible para insertar un registro es: " << maxCap << " bytes.\n";
     return maxCap;
+}
+
+void Bloques::EscribirHeaderSlottedPage(std::fstream &bloque, int numSlots, int freeOffset, const std::vector<std::pair<int, int>> &slots)
+{
+    bloque << "SLOTTED_PAGE\n";
+    bloque << "NumSlots=" << numSlots << "\n";
+    bloque << "FreeSpaceOffset=" << freeOffset << "\n";
+    for (int i = 0; i < numSlots; ++i)
+    {
+        bloque << "Slot" << i << "=" << slots[i].first << "," << slots[i].second << "\n";
+    }
+    bloque << "#DATA\n";
+}
+
+void Bloques::LeerHeaderSlottedPage(std::fstream &bloque, int &numSlots, int &freeOffset, std::vector<std::pair<int, int>> &slots)
+{
+    std::string linea;
+    std::getline(bloque, linea);
+    std::getline(bloque, linea);
+    numSlots = std::stoi(linea.substr(linea.find('=') + 1));
+    std::getline(bloque, linea);
+    freeOffset = std::stoi(linea.substr(linea.find('=') + 1));
+    slots.clear();
+    for (int i = 0; i < numSlots; ++i)
+    {
+        std::getline(bloque, linea);
+        size_t eq = linea.find('=');
+        size_t comma = linea.find(',', eq + 1);
+        int offset = std::stoi(linea.substr(eq + 1, comma - eq - 1));
+        int size = std::stoi(linea.substr(comma + 1));
+        slots.push_back({offset, size});
+    }
+    std::getline(bloque, linea);
+}
+
+bool Bloques::InsertarRegistroEnBloque(const std::string &registro, int bloqueId)
+{
+    std::string rutaBloque = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/Bloque_" + std::to_string(bloqueId) + ".txt";
+    std::fstream bloque(rutaBloque, std::ios::in | std::ios::out);
+    if (!bloque.is_open())
+        return false;
+
+    // Leer el header actual
+    int numSlots, freeOffset;
+    std::vector<std::pair<int, int>> slots;
+    LeerHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
+
+    // Calcular espacio usado (posición actual es inicio de #DATA)
+    int headerSize = (int)bloque.tellg();
+    bloque.seekg(0, std::ios::end);
+    int tamActual = (int)bloque.tellg();
+    int capacidadBloque = Capacity; // Usa la capacidad del bloque, como definiste
+
+    int tamRegistro = (int)registro.size();
+    // Si es el primer registro, freeOffset será headerSize
+    if (freeOffset < headerSize)
+        freeOffset = headerSize;
+
+    if (capacidadBloque < (freeOffset + tamRegistro))
+    {
+        bloque.close();
+        return false; // No hay espacio
+    }
+
+    // Escribir el registro al final actual
+    bloque.seekp(freeOffset, std::ios::beg);
+    bloque.write(registro.c_str(), tamRegistro);
+
+    // Actualizar slots y header
+    slots.push_back({freeOffset, tamRegistro});
+    numSlots++;
+    freeOffset += tamRegistro;
+
+    // Ahora sobreescribe el header (al inicio del archivo)
+    bloque.seekp(0, std::ios::beg);
+    EscribirHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
+
+    bloque.close();
+    return true;
 }

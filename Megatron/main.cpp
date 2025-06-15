@@ -10,12 +10,12 @@ namespace fs = std::filesystem;
 
 void Menu()
 {
-    std::cout << "1. Crear Disco Personalizado.\n2. Cargar Archivo.\n3. Select *\n4. Select <\n5. Mostrar Estado del Disco.\n6. Mostrar Sectores Ocupados.\n7. Mostrar Bloques Ocupados.\n8. Salir.\nIngrese la opcion a realizar:";
+    std::cout << "1. Crear Disco Personalizado.\n2. Cargar Archivo.\n3. Select *\n4. Select <\n5. Mostrar Estado del Disco.\n6. Mostrar Sectores Ocupados.\n7. Mostrar Bloques Ocupados.\n8. Salir.\nIngrese la opcion a realizar: ";
 }
 
 int main()
 {
-    // g++ -o main main.cpp SGBD.cpp Records_Manager.cpp Disco.cpp Bloques.cpp
+    // g++ -o main main.cpp SGBD.cpp Disco.cpp Bloques.cpp
     SGBD A;
     int opc = 0;
     while (opc != -1)

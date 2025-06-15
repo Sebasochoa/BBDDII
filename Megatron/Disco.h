@@ -22,7 +22,7 @@ public:
     std::string Get_Name();
     int MaxCapacity();
     int FullCapacity();
-    void Upload_Blocks(std::string);
+    void CargarRegistrosBloquesADiscoSlotted(std::string);
     void Clear_Blocks();
     int RemainCapacity(std::string);
     void First_Line(std::string, std::string);
