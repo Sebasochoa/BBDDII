@@ -12,6 +12,7 @@ Disco::Disco()
     Name = "";
     Plates = Surfaces = Tracks = Sectors = CapSection = 0;
     SectoresPorBloque = 0;
+    Blocks.SetBufferManager(&buffer);
 }
 
 Disco::Disco(const std::string &NDisco, bool usarPorDefecto)
@@ -65,6 +66,7 @@ Disco::Disco(const std::string &NDisco, bool usarPorDefecto)
     meta << "CapSection=" << CapSection << "\n";
     meta << "SectoresPorBloque=" << SectoresPorBloque << "\n";
     meta.close();
+    Blocks.SetBufferManager(&buffer);
 }
 
 Disco::Disco(const std::string &NDisco)
@@ -175,6 +177,7 @@ Disco::Disco(const std::string &NDisco)
     std::cout << "Platos: " << Plates << "  Superficies: " << Surfaces
               << "  Pistas: " << Tracks << "  Sectores: " << Sectors
               << "  Capacidad por sector: " << CapSection << " bytes\n";
+    Blocks.SetBufferManager(&buffer);
 }
 
 Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks, int NSections, int Capacity, int NumSectorxBloque)
@@ -237,6 +240,7 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
     meta << "CapSection=" << CapSection << "\n";
     meta << "SectoresPorBloque=" << SectoresPorBloque << "\n";
     meta.close();
+    Blocks.SetBufferManager(&buffer);
 }
 
 std::string Disco::Get_Name()

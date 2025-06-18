@@ -1,6 +1,7 @@
 #ifndef DISCO_H
 #define DISCO_H
 #include "Bloques.h"
+#include "BufferManager.h"
 class Disco
 {
 private:
@@ -11,6 +12,7 @@ private:
     int CapSection;
     int SectoresPorBloque;
     std::string Name;
+    BufferManager buffer;
 
 public:
     Bloques Blocks;

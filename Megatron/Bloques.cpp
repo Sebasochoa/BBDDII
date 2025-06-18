@@ -1,4 +1,5 @@
 #include "Bloques.h"
+#include "BufferManager.h"
 #include <sstream>
 #include <fstream>
 #include <vector>
@@ -9,8 +10,68 @@
 
 namespace fs = std::filesystem;
 
+static void ParseHeaderFromString(const std::string &data, int &numSlots, int &freeOffset,
+                                  std::vector<std::pair<int, int>> &slots)
+{
+    std::stringstream ss(data);
+    std::string line;
+    std::getline(ss, line); // SLOTTED_PAGE
+    if (line != "SLOTTED_PAGE")
+        return;
+    std::getline(ss, line); // NumSlots
+    numSlots = std::stoi(line.substr(line.find('=') + 1));
+    std::getline(ss, line); // FreeSpaceOffset
+    freeOffset = std::stoi(line.substr(line.find('=') + 1));
+    slots.clear();
+    for (int i = 0; i < numSlots; ++i)
+    {
+        std::getline(ss, line);
+        size_t eq = line.find('=');
+        size_t comma = line.find(',', eq + 1);
+        int offset = std::stoi(line.substr(eq + 1, comma - eq - 1));
+        int size = std::stoi(line.substr(comma + 1));
+        slots.push_back({offset, size});
+    }
+    std::getline(ss, line); // #DATA
+}
+
+static std::string BuildHeaderString(int numSlots, int &freeOff,
+                                     std::vector<std::pair<int, int>> &slots)
+{
+    int headerSize = 0;
+    std::string header;
+    while (true)
+    {
+        int offset = headerSize;
+        for (int i = 0; i < numSlots; ++i)
+        {
+            const_cast<std::pair<int, int> &>(slots[i]).first = offset;
+            offset += slots[i].second;
+        }
+        freeOff = offset;
+        std::ostringstream oss;
+        oss << "SLOTTED_PAGE\n";
+        oss << "NumSlots=" << numSlots << "\n";
+        oss << "FreeSpaceOffset=" << freeOff << "\n";
+        for (int i = 0; i < numSlots; ++i)
+            oss << "Slot" << i << "=" << slots[i].first << "," << slots[i].second << "\n";
+        oss << "#DATA\n";
+        header = oss.str();
+        if ((int)header.size() == headerSize)
+            break;
+        headerSize = (int)header.size();
+    }
+    return header;
+}
+
 Bloques::Bloques()
 {
+    bufferManager = nullptr;
+}
+
+void Bloques::SetBufferManager(BufferManager *bm)
+{
+    bufferManager = bm;
 }
 
 void Bloques::Initialize(int capacity, int numBlocksx, int maxCapacity, std::string nameDisk)
@@ -450,22 +511,34 @@ std::vector<std::string> Bloques::FiltrarRegistros(const std::string &nombreDisc
     std::string rutaBloques = std::filesystem::current_path().string() + "/Discos/Bloques_" + nombreDisco + "/";
     for (int i = 1;; ++i)
     {
-        std::fstream bloque(rutaBloques + "Bloque_" + std::to_string(i) + ".txt", std::ios::in);
-        if (!bloque.is_open())
+        std::string ruta = rutaBloques + "Bloque_" + std::to_string(i) + ".txt";
+        if (!std::filesystem::exists(ruta))
             break;
 
-        std::string linea;
-        std::getline(bloque, linea);
-        if (linea == "SLOTTED_PAGE")
+        std::string data;
+        if (!bufferManager)
+        {
+            std::fstream bloque(ruta, std::ios::in);
+            if (!bloque.is_open())
+                break;
+            std::stringstream ss;
+            ss << bloque.rdbuf();
+            data = ss.str();
+            bloque.close();
+        }
+        else
+        {
+            data = bufferManager->readBlock(i, ruta);
+        }
+
+        if (data.rfind("SLOTTED_PAGE", 0) == 0)
         {
             int numSlots, freeOffset;
             std::vector<std::pair<int, int>> slots;
-            LeerHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
+            ParseHeaderFromString(data, numSlots, freeOffset, slots);
             for (const auto &slot : slots)
             {
-                bloque.seekg(slot.first, std::ios::beg);
-                std::string reg(slot.second, '\0');
-                bloque.read(&reg[0], slot.second);
+                std::string reg = data.substr(slot.first, slot.second);
                 size_t p1 = reg.find('#');
                 size_t p2 = reg.find('#', p1 + 1);
                 if (p1 == std::string::npos || p2 == std::string::npos)
@@ -493,10 +566,6 @@ std::vector<std::string> Bloques::FiltrarRegistros(const std::string &nombreDisc
                 }
             }
         }
-        else
-        {
-        }
-        bloque.close();
     }
     return resultado;
 }
@@ -569,10 +638,23 @@ void Bloques::MostrarBloquesOcupados()
     for (int i = 1; i <= NumBlocks; ++i)
     {
         std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
-        std::fstream bloque(bloquePath, std::ios::in);
-        if (!bloque.is_open())
-            continue;
+        std::string data;
+        if (!bufferManager)
+        {
+            std::fstream bloque(bloquePath, std::ios::in);
+            if (!bloque.is_open())
+                continue;
+            std::stringstream ss;
+            ss << bloque.rdbuf();
+            data = ss.str();
+            bloque.close();
+        }
+        else
+        {
+            data = bufferManager->readBlock(i, bloquePath);
+        }
 
+        std::stringstream bloque(data);
         std::string linea;
         std::getline(bloque, linea);
         int registros = 0;
@@ -585,12 +667,11 @@ void Bloques::MostrarBloquesOcupados()
             bloque.seekg(0, std::ios::beg);
             int numSlots, freeOffset;
             std::vector<std::pair<int, int>> slots;
-            LeerHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
+            ParseHeaderFromString(data, numSlots, freeOffset, slots);
             registros = numSlots;
             capacidadOcupada = freeOffset;
             capacidadDisponible = capacidadTotal - capacidadOcupada;
         }
-
         std::cout << "Bloque " << i << ": "
                   << (registros > 0 ? std::to_string(registros) + " registros, " : "vacio, ")
                   << capacidadOcupada << "B/" << capacidadTotal << "B (" << (capacidadTotal ? capacidadOcupada * 100 / capacidadTotal : 0) << "% ocupado)" << std::endl;
@@ -602,11 +683,9 @@ void Bloques::MostrarDetalleBloque(int numBloque)
     std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
     std::string bloquePath = rutaBase + "Bloque_" + std::to_string(numBloque) + ".txt";
     std::ifstream bloqueIn(bloquePath);
-    if (!bloqueIn.is_open())
-    {
-        std::cout << "No existe el bloque " << numBloque << std::endl;
-        return;
-    }
+    std::string data = bufferManager->readBlock(numBloque, bloquePath);
+
+    std::stringstream bloqueIn(data);
     std::string linea;
     std::getline(bloqueIn, linea);
     int capacidadDisponible = std::stoi(linea);
@@ -675,12 +754,22 @@ int Bloques::CapacidadMaximaRegistro()
     for (int i = 1; i <= NumBlocks; ++i)
     {
         std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
-        std::ifstream bloqueIn(bloquePath);
-        if (!bloqueIn.is_open())
-            continue;
-        std::string linea;
-        std::getline(bloqueIn, linea);
-        int capacidadDisponible = std::stoi(linea);
+        std::string data;
+        if (!bufferManager)
+        {
+            std::ifstream bloqueIn(bloquePath);
+            if (!bloqueIn.is_open())
+                continue;
+            std::getline(bloqueIn, data);
+            bloqueIn.close();
+        }
+        else
+        {
+            data = bufferManager->readBlock(i, bloquePath);
+            std::stringstream ss(data);
+            std::getline(ss, data);
+        }
+        int capacidadDisponible = std::stoi(data);
         if (capacidadDisponible > maxCap)
             maxCap = capacidadDisponible;
     }
@@ -726,29 +815,48 @@ void Bloques::LeerHeaderSlottedPage(std::fstream &bloque, int &numSlots, int &fr
 bool Bloques::InsertarRegistroEnBloque(const std::string &registro, int bloqueId)
 {
     std::string rutaBloque = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/Bloque_" + std::to_string(bloqueId) + ".txt";
-    return InsertarRegistroEnArchivo(rutaBloque, registro, Capacity);
+    if (!bufferManager)
+        return InsertarRegistroEnArchivo(rutaBloque, registro, Capacity);
+
+    std::string &data = bufferManager->readBlock(bloqueId, rutaBloque);
+    int numSlots, freeOffset;
+    std::vector<std::pair<int, int>> slots;
+    ParseHeaderFromString(data, numSlots, freeOffset, slots);
+
+    std::vector<std::string> datos;
+    for (const auto &s : slots)
+        datos.push_back(data.substr(s.first, s.second));
+
+    datos.push_back(registro);
+    slots.push_back({0, (int)registro.size()});
+    numSlots++;
+
+    int freeOff = freeOffset;
+    std::string header = BuildHeaderString(numSlots, freeOff, slots);
+    if (freeOff > Capacity)
+        return false;
+
+    std::string result = header;
+    for (const auto &d : datos)
+        result += d;
+    data = result;
+    bufferManager->markDirty(bloqueId);
+    return true;
 }
 
 std::vector<std::string> Bloques::LeerTodosLosRegistrosEnBloque(int bloqueId)
 {
     std::vector<std::string> registros;
     std::string rutaBloque = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/Bloque_" + std::to_string(bloqueId) + ".txt";
-    std::fstream bloque(rutaBloque, std::ios::in);
-    if (!bloque.is_open())
-        return registros;
-
+    std::string &data = bufferManager->readBlock(bloqueId, rutaBloque);
     int numSlots, freeOffset;
     std::vector<std::pair<int, int>> slots;
-    LeerHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
-
+    ParseHeaderFromString(data, numSlots, freeOffset, slots);
     for (const auto &slot : slots)
     {
-        bloque.seekg(slot.first, std::ios::beg);
-        std::string data(slot.second, '\0');
-        bloque.read(&data[0], slot.second);
-        registros.push_back(data);
+        registros.push_back(data.substr(slot.first, slot.second));
     }
-    bloque.close();
+
     return registros;
 }
 

@@ -11,7 +11,8 @@ Compile the project with a C++17 compiler that supports `<filesystem>`:
 ```bash
 g++ -std=c++17 -o sgbd \
     Megatron/main.cpp Megatron/SGBD.cpp \
-    Megatron/Disco.cpp Megatron/Bloques.cpp
+    Megatron/Disco.cpp Megatron/Bloques.cpp \
+    Megatron/BufferManager.cpp
 ```
 
 ## Example data

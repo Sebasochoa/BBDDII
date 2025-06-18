@@ -4,15 +4,19 @@
 #include <vector>
 #include <fstream>
 
+class BufferManager;
+
 class Bloques
 {
 private:
     std::string NameDisk;
     int Capacity;
     int NumBlocks;
+    BufferManager *bufferManager;
 
 public:
     Bloques();
+    void SetBufferManager(BufferManager *bm);
     void Initialize(int, int, int, std::string);
     void set_NameDisk(std::string);
     int get_NumBlocks();
