@@ -17,6 +17,10 @@ private:
 public:
     Bloques Blocks;
     Disco();
+    Disco(const Disco &other);
+    Disco &operator=(const Disco &other);
+    Disco(Disco &&other) noexcept;
+    Disco &operator=(Disco &&other) noexcept;
     Disco(const std::string &nombre);
     Disco(const std::string &nombre, bool usarPorDefecto);
     Disco(const std::string &nombre, int platos, int superficies, int pistas, int sectores, int capSector, int sectoresPorBloque);

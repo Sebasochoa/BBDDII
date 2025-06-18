@@ -15,6 +15,70 @@ Disco::Disco()
     Blocks.SetBufferManager(&buffer);
 }
 
+Disco::Disco(const Disco &other)
+{
+    Plates = other.Plates;
+    Surfaces = other.Surfaces;
+    Tracks = other.Tracks;
+    Sectors = other.Sectors;
+    CapSection = other.CapSection;
+    SectoresPorBloque = other.SectoresPorBloque;
+    Name = other.Name;
+    buffer = other.buffer;
+    Blocks = other.Blocks;
+    Blocks.SetBufferManager(&buffer);
+}
+
+Disco &Disco::operator=(const Disco &other)
+{
+    if (this != &other)
+    {
+        Plates = other.Plates;
+        Surfaces = other.Surfaces;
+        Tracks = other.Tracks;
+        Sectors = other.Sectors;
+        CapSection = other.CapSection;
+        SectoresPorBloque = other.SectoresPorBloque;
+        Name = other.Name;
+        buffer = other.buffer;
+        Blocks = other.Blocks;
+        Blocks.SetBufferManager(&buffer);
+    }
+    return *this;
+}
+
+Disco::Disco(Disco &&other) noexcept
+{
+    Plates = other.Plates;
+    Surfaces = other.Surfaces;
+    Tracks = other.Tracks;
+    Sectors = other.Sectors;
+    CapSection = other.CapSection;
+    SectoresPorBloque = other.SectoresPorBloque;
+    Name = std::move(other.Name);
+    buffer = std::move(other.buffer);
+    Blocks = std::move(other.Blocks);
+    Blocks.SetBufferManager(&buffer);
+}
+
+Disco &Disco::operator=(Disco &&other) noexcept
+{
+    if (this != &other)
+    {
+        Plates = other.Plates;
+        Surfaces = other.Surfaces;
+        Tracks = other.Tracks;
+        Sectors = other.Sectors;
+        CapSection = other.CapSection;
+        SectoresPorBloque = other.SectoresPorBloque;
+        Name = std::move(other.Name);
+        buffer = std::move(other.buffer);
+        Blocks = std::move(other.Blocks);
+        Blocks.SetBufferManager(&buffer);
+    }
+    return *this;
+}
+
 Disco::Disco(const std::string &NDisco, bool usarPorDefecto)
 {
     Name = NDisco;
