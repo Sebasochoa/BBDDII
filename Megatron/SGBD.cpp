@@ -71,8 +71,13 @@ void SGBD::Cargar()
 
     bool esfijo = formato == "E" ? true : false;
 
-    Disco A = BuscarDisco(name_disk);
-    A.CargarRegistrosBloquesADiscoSlotted(A.CargarEnBloques(esfijo));
+    Disco *A = BuscarDisco(name_disk);
+    if (!A)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    A->CargarRegistrosBloquesADiscoSlotted(A->CargarEnBloques(esfijo));
 }
 
 void SGBD::Select()
@@ -82,12 +87,19 @@ void SGBD::Select()
     std::cin >> name_disk;
     std::cout << "Ingrese el nombre de la tabla a seleccionar: ";
     std::cin >> nEsquema;
-    Disco A = BuscarDisco(name_disk);
-    A.Clear_Blocks();
-    A.LlenarBloquesConRegistros();
-    auto resultados = A.Blocks.FiltrarRegistros(name_disk, nEsquema);
-
-    A.Blocks.MostrarRegistros(resultados, name_disk, nEsquema);
+    Disco *A = BuscarDisco(name_disk);
+    if (!A)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    A->Clear_Blocks();
+    std::cout << "funciona1\n";
+    A->LlenarBloquesConRegistros();
+    std::cout << "funciona2\n";
+    auto resultados = A->Blocks.FiltrarRegistros(name_disk, nEsquema);
+     std::cout << "funciona3\n";
+    A->Blocks.MostrarRegistros(resultados, name_disk, nEsquema);
 }
 
 void SGBD::Select_Discriminado()
@@ -103,20 +115,25 @@ void SGBD::Select_Discriminado()
     std::cin >> sign;
     std::cout << "Ingrese el valor que desea seleccionar: ";
     std::cin >> valor;
-    Disco A = BuscarDisco(name_disk);
-    A.Clear_Blocks();
-    A.LlenarBloquesConRegistros();
-    auto resultados = A.Blocks.FiltrarRegistros(name_disk, name_squeme, name_atribute, sign, valor);
+    Disco *A = BuscarDisco(name_disk);
+    if (!A)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    A->Clear_Blocks();
+    A->LlenarBloquesConRegistros();
+    auto resultados = A->Blocks.FiltrarRegistros(name_disk, name_squeme, name_atribute, sign, valor);
     int opc = -1;
     std::cout << "¿Desea mostrar los registros o guardarlos en disco?\n1.Mostrar\n2.Guardar\nIngrese la opcion: ";
     std::cin >> opc;
     switch (opc)
     {
     case 1:
-        A.Blocks.MostrarRegistros(resultados, name_disk, name_squeme);
+        A->Blocks.MostrarRegistros(resultados, name_disk, name_squeme);
         break;
     case 2:
-        A.GuardarRegistrosComoNuevaTabla(resultados, name_squeme, name_atribute, sign, valor);
+        A->GuardarRegistrosComoNuevaTabla(resultados, name_squeme, name_atribute, sign, valor);
     default:
         break;
     }
@@ -135,10 +152,15 @@ void SGBD::Select_Discriminado_Archivo()
     std::cin >> sign;
     std::cout << "Ingrese el valor que desea seleccionar ";
     std::cin >> valor;
-    Disco A = BuscarDisco(name_disk);
-    A.Clear_Blocks();
-    A.LlenarBloquesConRegistros();
-    auto resultados = A.Blocks.FiltrarRegistros(name_disk, name_squeme, name_atribute, sign, valor);
+    Disco *A = BuscarDisco(name_disk);
+    if (!A)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    A->Clear_Blocks();
+    A->LlenarBloquesConRegistros();
+    auto resultados = A->Blocks.FiltrarRegistros(name_disk, name_squeme, name_atribute, sign, valor);
 }
 
 void SGBD::Buscar_reemplazar()
@@ -151,16 +173,16 @@ void SGBD::Buscar_reemplazar()
     std::cin >> name_squeme;
 }
 
-Disco SGBD::BuscarDisco(std::string Name_Disk)
+Disco *SGBD::BuscarDisco(const std::string &Name_Disk)
 {
     for (size_t i = 0; i < Discos.size(); i++)
     {
         if (Name_Disk == Discos[i].Get_Name())
         {
-            return Discos[i];
+            return &Discos[i];
         }
     }
-    return Disco();
+    return nullptr;
 }
 
 void SGBD::MostrarEstadoDisco()
@@ -168,8 +190,13 @@ void SGBD::MostrarEstadoDisco()
     std::string name_disk;
     std::cout << "Ingrese el Disco a consultar: ";
     std::cin >> name_disk;
-    Disco disco = BuscarDisco(name_disk);
-    disco.MostrarResumenCapacidad();
+    Disco *disco = BuscarDisco(name_disk);
+    if (!disco)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    disco->MostrarResumenCapacidad();
 }
 
 void SGBD::MostrarSectoresOcupados()
@@ -177,8 +204,13 @@ void SGBD::MostrarSectoresOcupados()
     std::string name_disk;
     std::cout << "Ingrese el Disco a consultar: ";
     std::cin >> name_disk;
-    Disco disco = BuscarDisco(name_disk);
-    disco.MostrarSectoresOcupados();
+    Disco *disco = BuscarDisco(name_disk);
+    if (!disco)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    disco->MostrarSectoresOcupados();
 }
 
 void SGBD::MostrarBloquesOcupados()
@@ -186,6 +218,10 @@ void SGBD::MostrarBloquesOcupados()
     std::string name_disk;
     std::cout << "Ingrese el Disco a consultar: ";
     std::cin >> name_disk;
-    Disco disco = BuscarDisco(name_disk);
-    disco.Blocks.MostrarBloquesOcupados();
+    Disco *disco = BuscarDisco(name_disk);
+    if (!disco) {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    disco->Blocks.MostrarBloquesOcupados();
 }

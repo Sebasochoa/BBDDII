@@ -10,8 +10,7 @@
 
 namespace fs = std::filesystem;
 
-static void ParseHeaderFromString(const std::string &data, int &numSlots, int &freeOffset,
-                                  std::vector<std::pair<int, int>> &slots)
+static void ParseHeaderFromString(const std::string &data, int &numSlots, int &freeOffset, std::vector<std::pair<int, int>> &slots)
 {
     std::stringstream ss(data);
     std::string line;
@@ -816,16 +815,13 @@ bool Bloques::InsertarRegistroEnBloque(const std::string &registro, int bloqueId
     std::string rutaBloque = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/Bloque_" + std::to_string(bloqueId) + ".txt";
     if (!bufferManager)
         return InsertarRegistroEnArchivo(rutaBloque, registro, Capacity);
-
     std::string &data = bufferManager->readBlock(bloqueId, rutaBloque);
     int numSlots, freeOffset;
     std::vector<std::pair<int, int>> slots;
     ParseHeaderFromString(data, numSlots, freeOffset, slots);
-
     std::vector<std::string> datos;
     for (const auto &s : slots)
         datos.push_back(data.substr(s.first, s.second));
-
     datos.push_back(registro);
     slots.push_back({0, (int)registro.size()});
     numSlots++;

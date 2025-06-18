@@ -1,4 +1,5 @@
 #include "BufferManager.h"
+#include <iostream>
 #include <fstream>
 
 BufferManager::BufferManager(size_t numFrames, Policy pol)
@@ -14,7 +15,6 @@ std::string &BufferManager::readBlock(int blockId, const std::string &path) {
         touch(blockId);
         return it->second.data;
     }
-
     evictIfNeeded();
     BufferFrame frame;
     frame.id = blockId;
