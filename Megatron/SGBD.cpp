@@ -86,6 +86,7 @@ void SGBD::Select()
     A.Clear_Blocks();
     A.LlenarBloquesConRegistros();
     auto resultados = A.Blocks.FiltrarRegistros(name_disk, nEsquema);
+
     A.Blocks.MostrarRegistros(resultados, name_disk, nEsquema);
 }
 

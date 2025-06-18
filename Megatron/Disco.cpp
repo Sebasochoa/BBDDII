@@ -277,19 +277,19 @@ int Disco::FullCapacity()
                     {
                         if (archivo.is_regular_file() && archivo.path().extension() == ".txt")
                         {
-                            std::ifstream in(archivo.path());
+                            std::fstream in(archivo.path(), std::ios::in);
                             if (!in.is_open())
                                 continue;
-                            std::string cabecera;
-                            std::getline(in, cabecera); // Leer capacidad disponible
+                            std::string linea;
+                            std::getline(in, linea);
                             int capacidadRestante = 0;
-                            try
+                            if (linea == "SLOTTED_PAGE")
                             {
-                                capacidadRestante = std::stoi(cabecera);
-                            }
-                            catch (...)
-                            {
-                                capacidadRestante = 0;
+                                in.seekg(0, std::ios::beg);
+                                int numSlots, freeOffset;
+                                std::vector<std::pair<int, int>> slots;
+                                Blocks.LeerHeaderSlottedPage(in, numSlots, freeOffset, slots);
+                                capacidadRestante = CapSection - freeOffset;
                             }
                             totalCapacidadDisponible += capacidadRestante;
                             totalCapacidadInicial += CapSection;
@@ -455,15 +455,7 @@ void Disco::Clear_Blocks()
 void Disco::LlenarBloquesConRegistros()
 {
     fs::path currentPath = fs::current_path();
-    int capacidadBloque = CapSection * SectoresPorBloque;
-    int bloqueActual = 1;
-    int capacidadRestante = capacidadBloque;
-    std::ofstream bloqueOut;
-
-    // Abre el primer bloque
-    std::string rutaBloque = currentPath.string() + "/Discos/Bloques_" + Name + "/Bloque_" + std::to_string(bloqueActual) + ".txt";
-    bloqueOut.open(rutaBloque, std::ios::trunc);
-    bloqueOut << capacidadRestante << "\n"; // escribe la capacidad al inicio
+    std::vector<std::string> registros;
 
     for (int i = 1; i <= Plates; ++i)
     {
@@ -480,36 +472,53 @@ void Disco::LlenarBloquesConRegistros()
                                              ("Sector_" + std::to_string(l)) /
                                              (std::to_string(i) + std::to_string(j) + std::to_string(k) + std::to_string(l) + ".txt");
 
-                    std::ifstream sectorIn(archivoSector);
-                    if (!sectorIn.is_open())
+                    std::fstream sector(archivoSector, std::ios::in);
+                    if (!sector.is_open())
                         continue;
 
-                    std::string primeraLinea;
-                    std::getline(sectorIn, primeraLinea); // saltar capacidad
+                    std::string linea;
+                    std::getline(sector, linea); // saltar capacidad
 
-                    std::string registro;
-                    while (std::getline(sectorIn, registro))
+                    if (linea == "SLOTTED_PAGE")
                     {
-                        // Puedes agregar aquí un filtro rápido por tabla si quieres (opcional)
-                        if ((int)registro.length() + 1 > capacidadRestante)
+                        int numSlots, freeOffset;
+                        std::vector<std::pair<int, int>> slots;
+                        Blocks.LeerHeaderSlottedPage(sector, numSlots, freeOffset, slots);
+                        for (const auto &slot : slots)
                         {
-                            // Cierra y abre el siguiente bloque
-                            bloqueOut.close();
-                            ++bloqueActual;
-                            rutaBloque = currentPath.string() + "/Discos/Bloques_" + Name + "/Bloque_" + std::to_string(bloqueActual) + ".txt";
-                            bloqueOut.open(rutaBloque, std::ios::trunc);
-                            capacidadRestante = capacidadBloque;
-                            bloqueOut << capacidadRestante << "\n";
+                            sector.seekg(slot.first, std::ios::beg);
+                            std::string data(slot.second, '\0');
+                            sector.read(&data[0], slot.second);
+                            registros.push_back(data);
                         }
-                        bloqueOut << registro << "\n";
-                        capacidadRestante -= ((int)registro.length() + 1);
                     }
-                    sectorIn.close();
+                    else
+                    {
+                        std::string registro;
+                        while (std::getline(sector, registro))
+                            registros.push_back(registro);
+                    }
+                    sector.close();
                 }
             }
         }
     }
-    bloqueOut.close();
+
+    // Insertar los registros obtenidos en los bloques usando el nuevo formato slotted page
+    for (size_t idxReg = 0; idxReg < registros.size(); ++idxReg)
+    {
+        bool insertado = false;
+        for (int bloqueId = 1; bloqueId <= Blocks.get_NumBlocks(); ++bloqueId)
+        {
+            if (Blocks.InsertarRegistroEnBloque(registros[idxReg], bloqueId))
+            {
+                insertado = true;
+                break;
+            }
+        }
+        if (!insertado)
+            break; // no hay espacio disponible
+    }
 }
 
 std::string ReemplazarNombreTablaEnRegistro(const std::string &reg, const std::string &nuevoNombre)
@@ -646,10 +655,26 @@ void Disco::MostrarResumenCapacidad()
                     {
                         if (archivo.is_regular_file() && archivo.path().extension() == ".txt")
                         {
-                            std::ifstream in(archivo.path());
+                            std::fstream in(archivo.path(), std::ios::in);
+                            if (!in.is_open())
+                                continue;
                             std::string linea;
                             std::getline(in, linea);
-                            if (in.peek() != EOF) // Si hay más líneas además de la cabecera
+                            bool ocupado = false;
+                            if (linea == "SLOTTED_PAGE")
+                            {
+                                in.seekg(0, std::ios::beg);
+                                int numSlots, freeOffset;
+                                std::vector<std::pair<int, int>> slots;
+                                Blocks.LeerHeaderSlottedPage(in, numSlots, freeOffset, slots);
+                                if (numSlots > 0)
+                                    ocupado = true;
+                            }
+                            else if (in.peek() != EOF)
+                            {
+                                ocupado = true;
+                            }
+                            if (ocupado)
                                 sectoresOcupados++;
                         }
                     }
@@ -690,14 +715,19 @@ void Disco::MostrarSectoresOcupados()
                     {
                         if (archivo.is_regular_file() && archivo.path().extension() == ".txt")
                         {
-                            std::ifstream in(archivo.path());
+                            std::fstream in(archivo.path(), std::ios::in);
+                            if (!in.is_open())
+                                continue;
                             std::string linea;
                             std::getline(in, linea); // Cabecera
                             int count = 0;
-                            while (std::getline(in, linea))
+                            if (linea == "SLOTTED_PAGE")
                             {
-                                if (!linea.empty())
-                                    count++;
+                                in.seekg(0, std::ios::beg);
+                                int numSlots, freeOffset;
+                                std::vector<std::pair<int, int>> slots;
+                                Blocks.LeerHeaderSlottedPage(in, numSlots, freeOffset, slots);
+                                count = numSlots;
                             }
                             if (count > 0)
                             {

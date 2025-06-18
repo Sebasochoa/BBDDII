@@ -329,7 +329,7 @@ std::vector<std::string> ParsearRegistroFI(const std::string &reg, const std::ve
     // Salta los campos de sistema: bloqueID, id, nombreTabla
     std::vector<std::string> campos;
     size_t ini = 0;
-    int saltar = 3;
+    int saltar = 2;
     for (int i = 0; i < saltar; ++i)
     {
         size_t p = reg.find('#', ini);
@@ -351,7 +351,7 @@ std::vector<std::string> ParsearRegistroVA(const std::string &reg, const std::ve
 {
     std::vector<std::string> campos;
     size_t ini = 0;
-    int saltar = 3;
+    int saltar = 2;
     for (int i = 0; i < saltar; ++i)
     {
         size_t p = reg.find('#', ini);
@@ -419,7 +419,6 @@ bool Comparar(const std::string &campo, const std::string &tipo, const std::stri
     return false;
 }
 
-// --- LA FUNCIÓN PRINCIPAL SOLICITADA ---
 std::vector<std::string> Bloques::FiltrarRegistros(const std::string &nombreDisco, const std::string &nombreTabla, const std::string &campoFiltro, const std::string &operador, const std::string &valorFiltro)
 {
     std::vector<std::string> resultado;
@@ -451,42 +450,53 @@ std::vector<std::string> Bloques::FiltrarRegistros(const std::string &nombreDisc
     std::string rutaBloques = std::filesystem::current_path().string() + "/Discos/Bloques_" + nombreDisco + "/";
     for (int i = 1;; ++i)
     {
-        std::ifstream bloqueIn(rutaBloques + "Bloque_" + std::to_string(i) + ".txt");
-        if (!bloqueIn.is_open())
+        std::fstream bloque(rutaBloques + "Bloque_" + std::to_string(i) + ".txt", std::ios::in);
+        if (!bloque.is_open())
             break;
-        std::string dummy;
-        std::getline(bloqueIn, dummy); // saltar la capacidad
 
-        std::string reg;
-        // --- dentro del bucle principal de lectura de registros ---
-        while (std::getline(bloqueIn, reg))
+        std::string linea;
+        std::getline(bloque, linea);
+        if (linea == "SLOTTED_PAGE")
         {
-            size_t p1 = reg.find('#');
-            size_t p2 = reg.find('#', p1 + 1);
-            size_t p3 = reg.find('#', p2 + 1);
-            std::string tablaEnRegistro = reg.substr(p2 + 1, p3 - p2 - 1);
-            if (tablaEnRegistro != nombreTabla)
-                continue; // Solo selecciona si coincide con la tabla
-
-            std::vector<std::string> campos;
-            if (formato == "FI")
-                campos = ParsearRegistroFI(reg, esquema);
-            else
-                campos = ParsearRegistroVA(reg, esquema);
-
-            if (campos.empty())
-                continue;
-
-            if (campoFiltro.empty())
+            int numSlots, freeOffset;
+            std::vector<std::pair<int, int>> slots;
+            LeerHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
+            for (const auto &slot : slots)
             {
-                resultado.push_back(reg);
-            }
-            else
-            {
-                if (Comparar(campos[idxFiltro], tipoFiltro, operador, valorFiltro))
+                bloque.seekg(slot.first, std::ios::beg);
+                std::string reg(slot.second, '\0');
+                bloque.read(&reg[0], slot.second);
+                size_t p1 = reg.find('#');
+                size_t p2 = reg.find('#', p1 + 1);
+                if (p1 == std::string::npos || p2 == std::string::npos)
+                    continue;
+                std::string tablaEnRegistro = reg.substr(p1 + 1, p2 - p1 - 1);
+                if (tablaEnRegistro != nombreTabla)
+                    continue; // Solo si coincide con la tabla
+
+                std::vector<std::string> campos;
+                if (formato == "FI")
+                    campos = ParsearRegistroFI(reg, esquema);
+                else
+                    campos = ParsearRegistroVA(reg, esquema);
+
+                if (campos.empty())
+                    continue;
+
+                if (campoFiltro.empty())
+                {
                     resultado.push_back(reg);
+                }
+                else if (Comparar(campos[idxFiltro], tipoFiltro, operador, valorFiltro))
+                {
+                    resultado.push_back(reg);
+                }
             }
         }
+        else
+        {
+        }
+        bloque.close();
     }
     return resultado;
 }
@@ -559,25 +569,31 @@ void Bloques::MostrarBloquesOcupados()
     for (int i = 1; i <= NumBlocks; ++i)
     {
         std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
-        std::ifstream bloqueIn(bloquePath);
-        if (!bloqueIn.is_open())
+        std::fstream bloque(bloquePath, std::ios::in);
+        if (!bloque.is_open())
             continue;
 
         std::string linea;
-        std::getline(bloqueIn, linea); // Cabecera con capacidad
-        int capacidadDisponible = std::stoi(linea);
-        int capacidadTotal = Capacity;
-        int capacidadOcupada = capacidadTotal - capacidadDisponible;
+        std::getline(bloque, linea);
         int registros = 0;
-        while (std::getline(bloqueIn, linea))
+        int capacidadOcupada = 0;
+        int capacidadDisponible = 0;
+        int capacidadTotal = Capacity;
+
+        if (linea == "SLOTTED_PAGE")
         {
-            if (!linea.empty())
-                registros++;
+            bloque.seekg(0, std::ios::beg);
+            int numSlots, freeOffset;
+            std::vector<std::pair<int, int>> slots;
+            LeerHeaderSlottedPage(bloque, numSlots, freeOffset, slots);
+            registros = numSlots;
+            capacidadOcupada = freeOffset;
+            capacidadDisponible = capacidadTotal - capacidadOcupada;
         }
 
         std::cout << "Bloque " << i << ": "
                   << (registros > 0 ? std::to_string(registros) + " registros, " : "vacio, ")
-                  << capacidadOcupada << "B/" << capacidadTotal << "B (" << (capacidadOcupada * 100 / capacidadTotal) << "% ocupado)" << std::endl;
+                  << capacidadOcupada << "B/" << capacidadTotal << "B (" << (capacidadTotal ? capacidadOcupada * 100 / capacidadTotal : 0) << "% ocupado)" << std::endl;
     }
 }
 
