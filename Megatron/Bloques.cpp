@@ -682,7 +682,6 @@ void Bloques::MostrarDetalleBloque(int numBloque)
 {
     std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
     std::string bloquePath = rutaBase + "Bloque_" + std::to_string(numBloque) + ".txt";
-    std::ifstream bloqueIn(bloquePath);
     std::string data = bufferManager->readBlock(numBloque, bloquePath);
 
     std::stringstream bloqueIn(data);
