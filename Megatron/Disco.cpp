@@ -898,8 +898,7 @@ void Disco::MostrarUbicacionBloques()
     }
 }
 
-std::string &Disco::RequestPage(int bloqueId, const std::string &ruta,
-                                bool write, bool pinned)
+std::string &Disco::RequestPage(int bloqueId, const std::string &ruta, bool write, bool pinned)
 {
     return buffer.readBlock(bloqueId, ruta, write, pinned);
 }
@@ -907,6 +906,11 @@ std::string &Disco::RequestPage(int bloqueId, const std::string &ruta,
 void Disco::SavePage(int bloqueId)
 {
     buffer.writeBlock(bloqueId);
+}
+
+void Disco::MarkDirty(int bloqueId)
+{
+    buffer.markDirty(bloqueId);
 }
 
 void Disco::UnpinPage(int bloqueId)
@@ -917,4 +921,35 @@ void Disco::UnpinPage(int bloqueId)
 void Disco::PrintPageTable() const
 {
     buffer.printPageTable();
+}
+
+bool Disco::InsertarRegistroEnBloqueYSector(int bloqueId, const std::string &registro)
+{
+    if (!Blocks.InsertarRegistroEnBloque(registro, bloqueId))
+        return false;
+
+    // Buscar un sector con espacio disponible
+    namespace fs = std::filesystem;
+    fs::path base = fs::current_path();
+    int total = Plates * Surfaces * Tracks * Sectors;
+    for (int sid = 0; sid < total; ++sid)
+    {
+        int p = sid % Plates + 1;
+        int su = (sid / Plates) % Surfaces + 1;
+        int t = (sid / (Plates * Surfaces)) % Tracks + 1;
+        int se = (sid / (Plates * Surfaces * Tracks)) % Sectors + 1;
+        fs::path sectorFile = base / "Discos" / Name /
+                               ("Plato_" + std::to_string(p)) /
+                               ("Superficie_" + std::to_string(su)) /
+                               ("Pista_" + std::to_string(t)) /
+                               ("Sector_" + std::to_string(se)) /
+                               (std::to_string(p) + std::to_string(su) + std::to_string(t) + std::to_string(se) + ".txt");
+        if (Blocks.InsertarRegistroEnArchivo(sectorFile.string(), registro, CapSection))
+        {
+            buffer.markDirty(bloqueId);
+            buffer.writeBlock(bloqueId);
+            return true;
+        }
+    }
+    return false;
 }

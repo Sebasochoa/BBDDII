@@ -44,6 +44,7 @@ void BufferManager::markDirty(int blockId)
     if (it != frames.end())
     {
         it->second.dirty = true;
+         it->second.write = true;
         touch(blockId);
     }
 }

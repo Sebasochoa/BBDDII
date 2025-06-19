@@ -265,28 +265,26 @@ void SGBD::OperarPaginas()
 
     std::string ruta = std::filesystem::current_path().string() + "/Discos/Bloques_" + name_disk + "/Bloque_" + std::to_string(bloque) + ".txt";
     std::string &datos = disco->RequestPage(bloque, ruta, true, true);
-    std::cout << "Contenido actual:\n"
-              << datos << "\n";
+    std::cout << "Contenido actual:\n" << datos << "\n";
 
-    std::cout << "Ingrese nuevo contenido (terminar con linea vacia):\n";
-    std::string linea, nuevo;
-    std::getline(std::cin >> std::ws, linea);
-    while (!linea.empty())
-    {
-        nuevo += linea + "\n";
-        std::getline(std::cin, linea);
-    }
+    std::cout << "Ingrese nuevo registro (linea unica, vacia para cancelar): ";
+    std::string nuevo;
+    std::getline(std::cin >> std::ws, nuevo);
     if (!nuevo.empty())
     {
-        datos = nuevo;
-        disco->SavePage(bloque);
-        std::cout << "¿Despinnear y guardar en disco? (s/n): ";
-        char r;
-        std::cin >> r;
-        if (r == 's' || r == 'S')
+        if (disco->InsertarRegistroEnBloqueYSector(bloque, nuevo))
         {
-            disco->UnpinPage(bloque);
-            disco->SavePage(bloque);
+            std::cout << "¿Despinnear y guardar en disco? (s/n): ";
+            char r;
+            std::cin >> r;
+            if (r == 's' || r == 'S')
+            {
+                disco->UnpinPage(bloque);
+            }
+        }
+        else
+        {
+            std::cout << "No hay espacio disponible para el registro" << std::endl;
         }
     }
     disco->PrintPageTable();
