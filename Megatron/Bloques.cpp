@@ -16,6 +16,9 @@ static void ParseHeaderFromString(const std::string &data, int &numSlots, int &f
     std::string line;
     std::getline(ss, line); // SLOTTED_PAGE
     if (line != "SLOTTED_PAGE")
+        numSlots = 0;
+        freeOffset = 0;
+        slots.clear();
         return;
     std::getline(ss, line); // NumSlots
     numSlots = std::stoi(line.substr(line.find('=') + 1));
@@ -32,19 +35,20 @@ static void ParseHeaderFromString(const std::string &data, int &numSlots, int &f
         slots.push_back({offset, size});
     }
     std::getline(ss, line); // #DATA
+    if (numSlots != static_cast<int>(slots.size()))
+        numSlots = static_cast<int>(slots.size());
 }
 
-static std::string BuildHeaderString(int numSlots, int &freeOff,
-                                     std::vector<std::pair<int, int>> &slots)
+static std::string BuildHeaderString(int numSlots, int &freeOff, std::vector<std::pair<int, int>> &slots)
 {
     int headerSize = 0;
     std::string header;
     while (true)
     {
         int offset = headerSize;
-        for (int i = 0; i < numSlots; ++i)
+        for (int i = 0; i < numSlots && i < static_cast<int>(slots.size()); ++i)
         {
-            const_cast<std::pair<int, int> &>(slots[i]).first = offset;
+            slots[i].first = offset;
             offset += slots[i].second;
         }
         freeOff = offset;
@@ -52,7 +56,7 @@ static std::string BuildHeaderString(int numSlots, int &freeOff,
         oss << "SLOTTED_PAGE\n";
         oss << "NumSlots=" << numSlots << "\n";
         oss << "FreeSpaceOffset=" << freeOff << "\n";
-        for (int i = 0; i < numSlots; ++i)
+        for (int i = 0; i < numSlots && i < static_cast<int>(slots.size()); ++i)
             oss << "Slot" << i << "=" << slots[i].first << "," << slots[i].second << "\n";
         oss << "#DATA\n";
         header = oss.str();
@@ -825,7 +829,6 @@ bool Bloques::InsertarRegistroEnBloque(const std::string &registro, int bloqueId
     datos.push_back(registro);
     slots.push_back({0, (int)registro.size()});
     numSlots++;
-
     int freeOff = freeOffset;
     std::string header = BuildHeaderString(numSlots, freeOff, slots);
     if (freeOff > Capacity)
@@ -917,4 +920,73 @@ bool Bloques::InsertarRegistroEnArchivo(const std::string &ruta, const std::stri
         out.write(d.c_str(), d.size());
     out.close();
     return true;
+}
+
+bool Bloques::EliminarRegistroEnBloque(int bloqueId, int slotIndex)
+{
+    std::string rutaBloque = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/Bloque_" + std::to_string(bloqueId) + ".txt";
+    if (!bufferManager)
+        return false;
+    
+    std::string &data = bufferManager->readBlock(bloqueId, rutaBloque);
+    int numSlots, freeOffset;
+    std::vector<std::pair<int, int>> slots;
+    ParseHeaderFromString(data, numSlots, freeOffset, slots);
+    if (slotIndex < 0 || slotIndex >= numSlots)
+        return false;
+
+    std::vector<std::string> registros;
+    for (const auto &s : slots)
+        registros.push_back(data.substr(s.first, s.second));
+
+    registros.erase(registros.begin() + slotIndex);
+    slots.erase(slots.begin() + slotIndex);
+    numSlots--;
+
+    for (int i = 0; i < numSlots; ++i)
+    {
+        slots[i].first = 0;
+        slots[i].second = registros[i].size();
+    }
+
+    int freeOff = 0;
+    std::string header = BuildHeaderString(numSlots, freeOff, slots);
+
+    std::string result = header;
+    for (const auto &r : registros)
+        result += r;
+
+    data = result;
+    bufferManager->markDirty(bloqueId);
+    return true;
+}
+
+bool Bloques::EliminarRegistro(const std::string &nombreTabla, int id)
+{
+    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
+    for (int i = 1; i <= NumBlocks; ++i)
+    {
+        std::string ruta = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
+        std::string &data = bufferManager->readBlock(i, ruta);
+        int numSlots, freeOffset;
+        std::vector<std::pair<int, int>> slots;
+        ParseHeaderFromString(data, numSlots, freeOffset, slots);
+        for (int j = 0; j < numSlots; ++j)
+        {
+            std::string reg = data.substr(slots[j].first, slots[j].second);
+            size_t p1 = reg.find('#');
+            if (p1 == std::string::npos)
+                continue;
+            size_t p2 = reg.find('#', p1 + 1);
+            if (p2 == std::string::npos)
+                continue;
+            std::string idReg = reg.substr(0, p1);
+            std::string tabla = reg.substr(p1 + 1, p2 - p1 - 1);
+            if (tabla == nombreTabla && idReg == std::to_string(id))
+            {
+                return EliminarRegistroEnBloque(i, j);
+            }
+        }
+    }
+    return false;
 }

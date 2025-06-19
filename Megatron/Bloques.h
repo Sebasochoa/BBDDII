@@ -13,6 +13,7 @@ private:
     int Capacity;
     int NumBlocks;
     BufferManager *bufferManager;
+    bool EliminarRegistroEnBloque(int bloqueId, int slotIndex);
 
 public:
     Bloques();
@@ -24,6 +25,7 @@ public:
     int get_Capacity();
     void set_Capacity(int);
 
+    bool EliminarRegistro(const std::string &nombreTabla, int id);
     bool CargarDesdeArchivo(const std::string &, const std::string &, bool);
     bool CargarRegistros(const std::vector<std::string> &);
     std::vector<std::string> FiltrarRegistros(const std::string &nombreDisco, const std::string &nombreTabla, const std::string &campoFiltro = "", const std::string &operador = "", const std::string &valorFiltro = "");

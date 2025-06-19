@@ -94,11 +94,8 @@ void SGBD::Select()
         return;
     }
     A->Clear_Blocks();
-    std::cout << "funciona1\n";
     A->LlenarBloquesConRegistros();
-    std::cout << "funciona2\n";
     auto resultados = A->Blocks.FiltrarRegistros(name_disk, nEsquema);
-     std::cout << "funciona3\n";
     A->Blocks.MostrarRegistros(resultados, name_disk, nEsquema);
 }
 
@@ -171,6 +168,29 @@ void SGBD::Buscar_reemplazar()
     std::cin >> name_disk;
     std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
     std::cin >> name_squeme;
+}
+
+void SGBD::EliminarRegistro()
+{
+    std::string name_disk, tabla;
+    int id;
+    std::cout << "Ingrese el Disco de donde desea eliminar: ";
+    std::cin >> name_disk;
+    std::cout << "Ingrese la tabla: ";
+    std::cin >> tabla;
+    std::cout << "Ingrese el ID del registro a eliminar: ";
+    std::cin >> id;
+    Disco *A = BuscarDisco(name_disk);
+    A->LlenarBloquesConRegistros();
+    if (!A)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    if (A->EliminarRegistro(tabla, id))
+        std::cout << "Registro eliminado correctamente\n";
+    else
+        std::cout << "Registro no encontrado\n";
 }
 
 Disco *SGBD::BuscarDisco(const std::string &Name_Disk)

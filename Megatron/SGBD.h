@@ -15,6 +15,7 @@ public:
     void Select_Discriminado_Archivo();
     void Buscar_reemplazar();
     Disco* BuscarDisco(const std::string &);
+    void EliminarRegistro();
     void MostrarEstadoDisco();
     void MostrarSectoresOcupados();
     void MostrarBloquesOcupados();

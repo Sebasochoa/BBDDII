@@ -36,6 +36,8 @@ public:
     std::string CargarEnBloques(bool);
     void LlenarBloquesConRegistros();
     void GuardarRegistrosComoNuevaTabla(const std::vector<std::string> &registros, const std::string &nombreTablaOriginal, const std::string &atributo, const std::string &signo, const std::string &valor);
+    bool EliminarRegistro(const std::string &nombreTabla, int id);
+    void ReemplazarSectoresDesdeBloques();
     void MostrarResumenCapacidad();
     void MostrarSectoresOcupados();
     void MostrarUbicacionBloques();

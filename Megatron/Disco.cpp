@@ -687,6 +687,66 @@ void Disco::GuardarRegistrosComoNuevaTabla(const std::vector<std::string> &regis
         std::cout << "Registros pendientes por falta de espacio: " << registrosPendientes << "\n";
 }
 
+void Disco::ReemplazarSectoresDesdeBloques()
+{
+    fs::path currentPath = fs::current_path();
+    int bloqueActual = 1;
+    for (int p = 1; p <= Plates; ++p)
+    {
+        for (int s = 1; s <= Surfaces; ++s)
+        {
+            for (int t = 1; t <= Tracks; ++t)
+            {
+                for (int se = 1; se <= Sectors; ++se)
+                {
+                    fs::path archivoSector = currentPath / "Discos" / Name /
+                                             ("Plato_" + std::to_string(p)) /
+                                             ("Superficie_" + std::to_string(s)) /
+                                             ("Pista_" + std::to_string(t)) /
+                                             ("Sector_" + std::to_string(se)) /
+                                             (std::to_string(p) + std::to_string(s) + std::to_string(t) + std::to_string(se) + ".txt");
+
+                    if (bloqueActual <= Blocks.get_NumBlocks())
+                    {
+                        std::string bloquePath = currentPath.string() + "/Discos/Bloques_" + Name + "/Bloque_" + std::to_string(bloqueActual) + ".txt";
+                        std::ifstream in(bloquePath, std::ios::binary);
+                        std::string data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                        in.close();
+                        std::ofstream out(archivoSector, std::ios::binary | std::ios::trunc);
+                        if (out.is_open())
+                        {
+                            out.write(data.c_str(), data.size());
+                            out.close();
+                        }
+                        ++bloqueActual;
+                    }
+                    else
+                    {
+                        std::fstream out(archivoSector, std::ios::out | std::ios::binary | std::ios::trunc);
+                        if (out.is_open())
+                        {
+                            std::vector<std::pair<int, int>> emptySlots;
+                            Blocks.EscribirHeaderSlottedPage(out, 0, 0, emptySlots);
+                            out.close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+bool Disco::EliminarRegistro(const std::string &nombreTabla, int id)
+{
+    bool ok = Blocks.EliminarRegistro(nombreTabla, id);
+    if (ok)
+    {
+        buffer.flushAll();
+        ReemplazarSectoresDesdeBloques();
+    }
+    return ok;
+}
+
 void Disco::MostrarResumenCapacidad()
 {
     int capacidadTotal = MaxCapacity();
