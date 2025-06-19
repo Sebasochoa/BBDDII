@@ -953,3 +953,15 @@ bool Disco::InsertarRegistroEnBloqueYSector(int bloqueId, const std::string &reg
     }
     return false;
 }
+
+void Disco::ImprimirBloque(int bloqueId)
+{
+    std::string ruta = std::filesystem::current_path().string() + "/Discos/Bloques_" + Name + "/Bloque_" + std::to_string(bloqueId) + ".txt";
+
+    std::string &contenido = RequestPage(bloqueId, ruta, false, false);
+
+    std::cout << "Contenido del Bloque " << bloqueId << ":\n";
+    std::cout << "-----------------------------\n";
+    std::cout << contenido << "\n";
+    std::cout << "-----------------------------\n";
+}

@@ -50,5 +50,6 @@ public:
     void PrintPageTable() const;
 
     bool InsertarRegistroEnBloqueYSector(int bloqueId, const std::string &registro);
+    void ImprimirBloque(int);
 };
 #endif

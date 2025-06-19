@@ -265,7 +265,8 @@ void SGBD::OperarPaginas()
 
     std::string ruta = std::filesystem::current_path().string() + "/Discos/Bloques_" + name_disk + "/Bloque_" + std::to_string(bloque) + ".txt";
     std::string &datos = disco->RequestPage(bloque, ruta, true, true);
-    std::cout << "Contenido actual:\n" << datos << "\n";
+    std::cout << "Contenido actual:\n"
+              << datos << "\n";
 
     std::cout << "Ingrese nuevo registro (linea unica, vacia para cancelar): ";
     std::string nuevo;
@@ -288,4 +289,67 @@ void SGBD::OperarPaginas()
         }
     }
     disco->PrintPageTable();
+}
+
+void SGBD::MostrarBloque()
+{
+    std::string name_disk;
+    int bloque;
+    std::cout << "Ingrese el disco: ";
+    std::cin >> name_disk;
+    std::cout << "Ingrese el id del bloque/pagina: ";
+    std::cin >> bloque;
+    Disco *disco = BuscarDisco(name_disk);
+    if (!disco)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    disco->ImprimirBloque(bloque);
+}
+
+void SGBD::MostrarPageTable()
+{
+    std::string name_disk;
+    std::cout << "Ingrese el disco: ";
+    std::cin >> name_disk;
+    Disco *disco = BuscarDisco(name_disk);
+    if (!disco)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+    disco->PrintPageTable();
+}
+
+void SGBD::RequerirPagina()
+{
+    int bloqueId;
+    char write, pinned;
+    std::string nombreDisco;
+    std::cout << "Ingrese el disco: ";
+    std::cin >> nombreDisco;
+    std::cout << "ID del bloque: ";
+    std::cin >> bloqueId;
+    std::cout << "¿Escribir (s/n)? ";
+    std::cin >> write;
+    std::cout << "¿Pinnear (s/n)? ";
+    std::cin >> pinned;
+    Disco *disco = BuscarDisco(nombreDisco);
+    if (!disco)
+    {
+        std::cout << "Disco no encontrado: " << nombreDisco << "\n";
+        return;
+    }
+
+    std::string ruta = std::filesystem::current_path().string() + "/Discos/Bloques_" + nombreDisco + "/Bloque_" + std::to_string(bloqueId) + ".txt";
+
+    std::string &pagina = disco->RequestPage(bloqueId, ruta, write == 's', pinned == 's');
+
+    std::cout << "Página solicitada (Bloque " << bloqueId << ") desde Disco '" << nombreDisco << "':\n";
+    std::cout << "------------------------------------------\n";
+    std::cout << pagina << "\n";
+    std::cout << "------------------------------------------\n";
+
+    disco->PrintPageTable(); // útil para verificar efecto del pin/write
 }

@@ -20,4 +20,8 @@ public:
     void MostrarSectoresOcupados();
     void MostrarBloquesOcupados();
     void OperarPaginas();
+    void MostrarBloque();
+    void MostrarPageTable();
+    void RequerirPagina();
+
 };
