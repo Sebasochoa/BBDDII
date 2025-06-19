@@ -240,9 +240,54 @@ void SGBD::MostrarBloquesOcupados()
     std::cout << "Ingrese el Disco a consultar: ";
     std::cin >> name_disk;
     Disco *disco = BuscarDisco(name_disk);
-    if (!disco) {
+    if (!disco)
+    {
         std::cout << "Disco no encontrado\n";
         return;
     }
     disco->Blocks.MostrarBloquesOcupados();
+}
+
+void SGBD::OperarPaginas()
+{
+    std::string name_disk;
+    int bloque;
+    std::cout << "Ingrese el disco: ";
+    std::cin >> name_disk;
+    std::cout << "Ingrese el id del bloque/pagina: ";
+    std::cin >> bloque;
+    Disco *disco = BuscarDisco(name_disk);
+    if (!disco)
+    {
+        std::cout << "Disco no encontrado\n";
+        return;
+    }
+
+    std::string ruta = std::filesystem::current_path().string() + "/Discos/Bloques_" + name_disk + "/Bloque_" + std::to_string(bloque) + ".txt";
+    std::string &datos = disco->RequestPage(bloque, ruta, true, true);
+    std::cout << "Contenido actual:\n"
+              << datos << "\n";
+
+    std::cout << "Ingrese nuevo contenido (terminar con linea vacia):\n";
+    std::string linea, nuevo;
+    std::getline(std::cin >> std::ws, linea);
+    while (!linea.empty())
+    {
+        nuevo += linea + "\n";
+        std::getline(std::cin, linea);
+    }
+    if (!nuevo.empty())
+    {
+        datos = nuevo;
+        disco->SavePage(bloque);
+        std::cout << "¿Despinnear y guardar en disco? (s/n): ";
+        char r;
+        std::cin >> r;
+        if (r == 's' || r == 'S')
+        {
+            disco->UnpinPage(bloque);
+            disco->SavePage(bloque);
+        }
+    }
+    disco->PrintPageTable();
 }

@@ -41,5 +41,11 @@ public:
     void MostrarResumenCapacidad();
     void MostrarSectoresOcupados();
     void MostrarUbicacionBloques();
+
+    // Buffer related helpers
+    std::string &RequestPage(int bloqueId, const std::string &ruta, bool write = false, bool pinned = false);
+    void SavePage(int bloqueId);
+    void UnpinPage(int bloqueId);
+    void PrintPageTable() const;
 };
 #endif

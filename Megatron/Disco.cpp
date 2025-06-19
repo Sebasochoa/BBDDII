@@ -726,7 +726,7 @@ void Disco::ReemplazarSectoresDesdeBloques()
                 out.close();
             }
         }
-        
+
         // Insertar tantos registros como quepan en el sector
         while (idxReg < registros.size())
         {
@@ -896,4 +896,25 @@ void Disco::MostrarUbicacionBloques()
             }
         }
     }
+}
+
+std::string &Disco::RequestPage(int bloqueId, const std::string &ruta,
+                                bool write, bool pinned)
+{
+    return buffer.readBlock(bloqueId, ruta, write, pinned);
+}
+
+void Disco::SavePage(int bloqueId)
+{
+    buffer.writeBlock(bloqueId);
+}
+
+void Disco::UnpinPage(int bloqueId)
+{
+    buffer.unpin(bloqueId);
+}
+
+void Disco::PrintPageTable() const
+{
+    buffer.printPageTable();
 }

@@ -60,7 +60,8 @@
         "map": "cpp",
         "set": "cpp",
         "ranges": "cpp",
-        "text_encoding": "cpp"
+        "text_encoding": "cpp",
+        "list": "cpp"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

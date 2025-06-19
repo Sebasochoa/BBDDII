@@ -10,7 +10,7 @@ namespace fs = std::filesystem;
 
 void Menu()
 {
-    std::cout << "1. Crear Disco Personalizado.\n2. Cargar Archivo.\n3. Select *\n4. Select <\n5. Mostrar Estado del Disco.\n6. Mostrar Sectores Ocupados.\n7. Mostrar Bloques Ocupados.\n8. Eliminar Registro.\n9. Salir.\nIngrese la opcion a realizar: ";
+    std::cout << "1. Crear Disco Personalizado.\n2. Cargar Archivo.\n3. Select *\n4. Select <\n5. Mostrar Estado del Disco.\n6. Mostrar Sectores Ocupados.\n7. Mostrar Bloques Ocupados.\n8. Eliminar Registro.\n9. Operar Paginas.\n10. Salir.\nIngrese la opcion a realizar: ";
 }
 
 int main()
@@ -49,6 +49,9 @@ int main()
             A.EliminarRegistro();
             break;
         case 9:
+            A.OperarPaginas();
+            break;
+        case 10:
             opc = -1;
         default:
             break;

@@ -19,4 +19,5 @@ public:
     void MostrarEstadoDisco();
     void MostrarSectoresOcupados();
     void MostrarBloquesOcupados();
+    void OperarPaginas();
 };

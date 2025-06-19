@@ -5,22 +5,38 @@
 #include <unordered_map>
 #include <list>
 
-struct BufferFrame {
+struct BufferFrame
+{
     int id;
     std::string path;
     std::string data;
     bool dirty = false;
+    bool pinned = false; // if true the page cannot be evicted
+    bool write = false;  // true if the page was requested for writing
 };
 
-class BufferManager {
+class BufferManager
+{
 public:
-    enum Policy { LRU, FIFO };
+    enum Policy
+    {
+        LRU,
+        FIFO
+    };
 
     BufferManager(size_t numFrames = 5, Policy policy = LRU);
     ~BufferManager();
 
-    // Load block into memory and return reference to its data
-    std::string &readBlock(int blockId, const std::string &path);
+    // Load block into memory and return reference to its data. If write is
+    // true the caller intends to modify the page. pinned controls eviction.
+    std::string &readBlock(int blockId, const std::string &path,
+                           bool write = false, bool pinned = false);
+
+    // Unpin a page so it can be evicted
+    void unpin(int blockId);
+
+    // Print the current page table following LRU order
+    void printPageTable() const;
 
     // Mark a block as modified
     void markDirty(int blockId);
