@@ -690,48 +690,49 @@ void Disco::GuardarRegistrosComoNuevaTabla(const std::vector<std::string> &regis
 void Disco::ReemplazarSectoresDesdeBloques()
 {
     fs::path currentPath = fs::current_path();
-    int bloqueActual = 1;
-    for (int p = 1; p <= Plates; ++p)
-    {
-        for (int s = 1; s <= Surfaces; ++s)
-        {
-            for (int t = 1; t <= Tracks; ++t)
-            {
-                for (int se = 1; se <= Sectors; ++se)
-                {
-                    fs::path archivoSector = currentPath / "Discos" / Name /
-                                             ("Plato_" + std::to_string(p)) /
-                                             ("Superficie_" + std::to_string(s)) /
-                                             ("Pista_" + std::to_string(t)) /
-                                             ("Sector_" + std::to_string(se)) /
-                                             (std::to_string(p) + std::to_string(s) + std::to_string(t) + std::to_string(se) + ".txt");
 
-                    if (bloqueActual <= Blocks.get_NumBlocks())
-                    {
-                        std::string bloquePath = currentPath.string() + "/Discos/Bloques_" + Name + "/Bloque_" + std::to_string(bloqueActual) + ".txt";
-                        std::ifstream in(bloquePath, std::ios::binary);
-                        std::string data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-                        in.close();
-                        std::ofstream out(archivoSector, std::ios::binary | std::ios::trunc);
-                        if (out.is_open())
-                        {
-                            out.write(data.c_str(), data.size());
-                            out.close();
-                        }
-                        ++bloqueActual;
-                    }
-                    else
-                    {
-                        std::fstream out(archivoSector, std::ios::out | std::ios::binary | std::ios::trunc);
-                        if (out.is_open())
-                        {
-                            std::vector<std::pair<int, int>> emptySlots;
-                            Blocks.EscribirHeaderSlottedPage(out, 0, 0, emptySlots);
-                            out.close();
-                        }
-                    }
-                }
+    // 1. Obtener todos los registros almacenados en los bloques
+    std::vector<std::string> registros;
+    for (int bloqueIdx = 1; bloqueIdx <= Blocks.get_NumBlocks(); ++bloqueIdx)
+    {
+        auto regs = Blocks.LeerTodosLosRegistrosEnBloque(bloqueIdx);
+        registros.insert(registros.end(), regs.begin(), regs.end());
+    }
+
+    // 2. Reescribir los sectores secuencialmente usando formato slotted page
+    size_t idxReg = 0;
+    int totalSectores = Plates * Surfaces * Tracks * Sectors;
+    for (int sectorId = 0; sectorId < totalSectores; ++sectorId)
+    {
+        int plato = sectorId % Plates + 1;
+        int superficie = (sectorId / Plates) % Surfaces + 1;
+        int pista = (sectorId / (Plates * Surfaces)) % Tracks + 1;
+        int sector = (sectorId / (Plates * Surfaces * Tracks)) % Sectors + 1;
+
+        fs::path archivoSector = currentPath / "Discos" / Name /
+                                 ("Plato_" + std::to_string(plato)) /
+                                 ("Superficie_" + std::to_string(superficie)) /
+                                 ("Pista_" + std::to_string(pista)) /
+                                 ("Sector_" + std::to_string(sector)) /
+                                 (std::to_string(plato) + std::to_string(superficie) + std::to_string(pista) + std::to_string(sector) + ".txt");
+
+        // Reiniciar el sector antes de insertar
+        {
+            std::fstream out(archivoSector, std::ios::out | std::ios::binary | std::ios::trunc);
+            if (out.is_open())
+            {
+                std::vector<std::pair<int, int>> emptySlots;
+                Blocks.EscribirHeaderSlottedPage(out, 0, 0, emptySlots);
+                out.close();
             }
+        }
+        
+        // Insertar tantos registros como quepan en el sector
+        while (idxReg < registros.size())
+        {
+            if (!Blocks.InsertarRegistroEnArchivo(archivoSector.string(), registros[idxReg], CapSection))
+                break;
+            ++idxReg;
         }
     }
 }

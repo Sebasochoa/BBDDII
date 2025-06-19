@@ -181,6 +181,7 @@ void SGBD::EliminarRegistro()
     std::cout << "Ingrese el ID del registro a eliminar: ";
     std::cin >> id;
     Disco *A = BuscarDisco(name_disk);
+    A->Clear_Blocks();
     A->LlenarBloquesConRegistros();
     if (!A)
     {

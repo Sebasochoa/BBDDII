@@ -16,10 +16,12 @@ static void ParseHeaderFromString(const std::string &data, int &numSlots, int &f
     std::string line;
     std::getline(ss, line); // SLOTTED_PAGE
     if (line != "SLOTTED_PAGE")
+    {
         numSlots = 0;
         freeOffset = 0;
         slots.clear();
         return;
+    }
     std::getline(ss, line); // NumSlots
     numSlots = std::stoi(line.substr(line.find('=') + 1));
     std::getline(ss, line); // FreeSpaceOffset
@@ -927,7 +929,7 @@ bool Bloques::EliminarRegistroEnBloque(int bloqueId, int slotIndex)
     std::string rutaBloque = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/Bloque_" + std::to_string(bloqueId) + ".txt";
     if (!bufferManager)
         return false;
-    
+
     std::string &data = bufferManager->readBlock(bloqueId, rutaBloque);
     int numSlots, freeOffset;
     std::vector<std::pair<int, int>> slots;
