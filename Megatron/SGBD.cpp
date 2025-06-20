@@ -136,40 +136,6 @@ void SGBD::Select_Discriminado()
     }
 }
 
-void SGBD::Select_Discriminado_Archivo()
-{
-    std::string name_disk, name_atribute, sign, name_squeme, valor;
-    std::cout << "Ingrese el Disco de donde quiere seleccionar la Tabla: ";
-    std::cin >> name_disk;
-    std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
-    std::cin >> name_squeme;
-    std::cout << "Ingrese el Atributo a seleccionar: ";
-    std::cin >> name_atribute;
-    std::cout << "Ingrese signo con el que seleccionara el atributo ( >, <, =) ";
-    std::cin >> sign;
-    std::cout << "Ingrese el valor que desea seleccionar ";
-    std::cin >> valor;
-    Disco *A = BuscarDisco(name_disk);
-    if (!A)
-    {
-        std::cout << "Disco no encontrado\n";
-        return;
-    }
-    A->Clear_Blocks();
-    A->LlenarBloquesConRegistros();
-    auto resultados = A->Blocks.FiltrarRegistros(name_disk, name_squeme, name_atribute, sign, valor);
-}
-
-void SGBD::Buscar_reemplazar()
-{
-    std::string name_disk, name_squeme;
-
-    std::cout << "Ingrese el Disco de donde quiere buscar la Tabla: ";
-    std::cin >> name_disk;
-    std::cout << "Ingrese la Tabla de donde quiere seleccionar el Atributo: ";
-    std::cin >> name_squeme;
-}
-
 void SGBD::EliminarRegistro()
 {
     std::string name_disk, tabla;
@@ -351,5 +317,5 @@ void SGBD::RequerirPagina()
     std::cout << pagina << "\n";
     std::cout << "------------------------------------------\n";
 
-    disco->PrintPageTable(); // útil para verificar efecto del pin/write
+    disco->PrintPageTable();
 }

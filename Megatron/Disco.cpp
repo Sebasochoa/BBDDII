@@ -871,46 +871,9 @@ void Disco::MostrarSectoresOcupados()
     }
 }
 
-void Disco::MostrarUbicacionBloques()
-{
-    std::cout << "Ubicación de Bloques en Disco: " << Name << std::endl;
-    int bloqueActual = 1;
-    for (int p = 1; p <= Plates; ++p)
-    {
-        for (int s = 1; s <= Surfaces; ++s)
-        {
-            for (int t = 1; t <= Tracks; ++t)
-            {
-                for (int se = 1; se <= Sectors; ++se)
-                {
-                    std::cout << "Bloque " << bloqueActual
-                              << ": Plato " << p
-                              << ", Superficie " << s
-                              << ", Pista " << t
-                              << ", Sector " << se << std::endl;
-                    bloqueActual++;
-                    // Si tienes menos bloques que sectores, puedes salir aquí
-                    if (bloqueActual > Blocks.get_NumBlocks())
-                        return;
-                }
-            }
-        }
-    }
-}
-
 std::string &Disco::RequestPage(int bloqueId, const std::string &ruta, bool write, bool pinned)
 {
     return buffer.readBlock(bloqueId, ruta, write, pinned);
-}
-
-void Disco::SavePage(int bloqueId)
-{
-    buffer.writeBlock(bloqueId);
-}
-
-void Disco::MarkDirty(int bloqueId)
-{
-    buffer.markDirty(bloqueId);
 }
 
 void Disco::UnpinPage(int bloqueId)

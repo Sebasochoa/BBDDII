@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <iostream>
 #include <queue>
+#include <algorithm>    
 #include <iomanip>
 
 namespace fs = std::filesystem;
@@ -126,13 +127,6 @@ void Bloques::set_Capacity(int capacity)
 {
     Capacity = capacity;
 }
-
-#include <sstream>
-#include <fstream>
-#include <vector>
-#include <filesystem>
-#include <iostream>
-#include <algorithm>
 
 bool EsEntero(const std::string &s)
 {
@@ -681,104 +675,6 @@ void Bloques::MostrarBloquesOcupados()
                   << (registros > 0 ? std::to_string(registros) + " registros, " : "vacio, ")
                   << capacidadOcupada << "B/" << capacidadTotal << "B (" << (capacidadTotal ? capacidadOcupada * 100 / capacidadTotal : 0) << "% ocupado)" << std::endl;
     }
-}
-
-void Bloques::MostrarDetalleBloque(int numBloque)
-{
-    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
-    std::string bloquePath = rutaBase + "Bloque_" + std::to_string(numBloque) + ".txt";
-    std::string data = bufferManager->readBlock(numBloque, bloquePath);
-
-    std::stringstream bloqueIn(data);
-    std::string linea;
-    std::getline(bloqueIn, linea);
-    int capacidadDisponible = std::stoi(linea);
-    int capacidadTotal = Capacity;
-    int capacidadOcupada = capacidadTotal - capacidadDisponible;
-    std::cout << "Bloque " << numBloque << ":\n";
-    std::cout << "  Capacidad total: " << capacidadTotal << " B\n";
-    std::cout << "  Capacidad ocupada: " << capacidadOcupada << " B\n";
-    std::cout << "  Capacidad libre: " << capacidadDisponible << " B\n";
-    std::cout << "  Registros:\n";
-    int id = 1;
-    while (std::getline(bloqueIn, linea))
-    {
-        if (!linea.empty())
-            std::cout << "    " << id++ << ": " << linea << std::endl;
-    }
-}
-
-bool Bloques::AgregarRegistroManual(const std::string &nombreTabla, const std::vector<std::string> &valores, bool esFijo)
-{
-    // Leer esquema
-    std::string formato;
-    auto esquema = LeerEsquema(NameDisk, nombreTabla, formato);
-    if (esquema.empty())
-    {
-        std::cout << "No se encontro el esquema para la tabla.\n";
-        return false;
-    }
-
-    // Formatear registro
-    std::string registro;
-    if (esFijo)
-    {
-        // Formatear en FI
-        registro = "BLOQUE#0#" + nombreTabla + "#";
-        for (size_t i = 0; i < valores.size(); ++i)
-        {
-            std::string campo = valores[i];
-            int longitud = (i < esquema.size()) ? esquema[i].longitud : 10;
-            if (campo.length() < longitud)
-                registro += std::string(longitud - campo.length(), ' ') + campo;
-            else
-                registro += campo.substr(0, longitud);
-        }
-    }
-    else
-    {
-        // Formato VA
-        std::string datos, metadatos;
-        for (size_t i = 0; i < valores.size(); ++i)
-        {
-            std::string campo = Escape(valores[i]);
-            datos += campo + "|";
-            metadatos += std::to_string(i) + ":" + std::to_string(valores[i].length()) + ";";
-        }
-        registro = "BLOQUE#0#" + nombreTabla + "#" + datos + "#METADATA:" + metadatos;
-    }
-
-    return false;
-}
-
-int Bloques::CapacidadMaximaRegistro()
-{
-    std::string rutaBase = std::filesystem::current_path().string() + "/Discos/Bloques_" + NameDisk + "/";
-    int maxCap = 0;
-    for (int i = 1; i <= NumBlocks; ++i)
-    {
-        std::string bloquePath = rutaBase + "Bloque_" + std::to_string(i) + ".txt";
-        std::string data;
-        if (!bufferManager)
-        {
-            std::ifstream bloqueIn(bloquePath);
-            if (!bloqueIn.is_open())
-                continue;
-            std::getline(bloqueIn, data);
-            bloqueIn.close();
-        }
-        else
-        {
-            data = bufferManager->readBlock(i, bloquePath);
-            std::stringstream ss(data);
-            std::getline(ss, data);
-        }
-        int capacidadDisponible = std::stoi(data);
-        if (capacidadDisponible > maxCap)
-            maxCap = capacidadDisponible;
-    }
-    std::cout << "La capacidad máxima disponible para insertar un registro es: " << maxCap << " bytes.\n";
-    return maxCap;
 }
 
 void Bloques::EscribirHeaderSlottedPage(std::fstream &bloque, int numSlots, int freeOffset, const std::vector<std::pair<int, int>> &slots)
