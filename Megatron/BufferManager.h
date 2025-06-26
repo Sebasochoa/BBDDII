@@ -11,8 +11,10 @@ struct BufferFrame
     std::string path;
     std::string data;
     bool dirty = false;
-    bool pinned = false; 
-    bool write = false; 
+    bool pinned = false;
+    bool write = false;
+    bool reference = false;
+    int processes = 0;
 };
 
 class BufferManager
@@ -21,13 +23,15 @@ public:
     enum Policy
     {
         LRU,
-        FIFO
+        FIFO,
+        CLOCK
     };
 
     BufferManager(size_t numFrames = 3, Policy policy = LRU);
     ~BufferManager();   
     std::string &readBlock(int blockId, const std::string &path, bool write = false, bool pinned = false);
     void unpin(int blockId);
+    void release(int blockId);
     void printPageTable() const;
     void markDirty(int blockId);
     void writeBlock(int blockId);
@@ -38,6 +42,7 @@ private:
     std::unordered_map<int, BufferFrame> frames;
     std::list<int> order;
     std::unordered_map<int, std::list<int>::iterator> positions;
+    std::list<int>::iterator clockHand;
     void touch(int blockId);
     void evictIfNeeded();
 };

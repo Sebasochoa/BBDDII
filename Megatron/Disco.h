@@ -13,6 +13,7 @@ private:
     int SectoresPorBloque;
     std::string Name;
     BufferManager buffer;
+    bool bufferConfigured = false;
 
 public:
     Bloques Blocks;
@@ -48,5 +49,10 @@ public:
 
     bool InsertarRegistroEnBloqueYSector(int bloqueId, const std::string &registro);
     void ImprimirBloque(int);
+
+    
+    // Buffer setup
+    void ConfigureBufferInteractive();
+    bool IsBufferConfigured() const { return bufferConfigured; }
 };
 #endif

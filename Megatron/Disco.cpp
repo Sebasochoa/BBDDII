@@ -12,6 +12,7 @@ Disco::Disco()
     Name = "";
     Plates = Surfaces = Tracks = Sectors = CapSection = 0;
     SectoresPorBloque = 0;
+    bufferConfigured = false;
     Blocks.SetBufferManager(&buffer);
 }
 
@@ -25,6 +26,7 @@ Disco::Disco(const Disco &other)
     SectoresPorBloque = other.SectoresPorBloque;
     Name = other.Name;
     buffer = other.buffer;
+    bufferConfigured = other.bufferConfigured;
     Blocks = other.Blocks;
     Blocks.SetBufferManager(&buffer);
 }
@@ -41,6 +43,7 @@ Disco &Disco::operator=(const Disco &other)
         SectoresPorBloque = other.SectoresPorBloque;
         Name = other.Name;
         buffer = other.buffer;
+        bufferConfigured = other.bufferConfigured;
         Blocks = other.Blocks;
         Blocks.SetBufferManager(&buffer);
     }
@@ -57,6 +60,7 @@ Disco::Disco(Disco &&other) noexcept
     SectoresPorBloque = other.SectoresPorBloque;
     Name = std::move(other.Name);
     buffer = std::move(other.buffer);
+    bufferConfigured = other.bufferConfigured;
     Blocks = std::move(other.Blocks);
     Blocks.SetBufferManager(&buffer);
 }
@@ -73,6 +77,7 @@ Disco &Disco::operator=(Disco &&other) noexcept
         SectoresPorBloque = other.SectoresPorBloque;
         Name = std::move(other.Name);
         buffer = std::move(other.buffer);
+        bufferConfigured = other.bufferConfigured;
         Blocks = std::move(other.Blocks);
         Blocks.SetBufferManager(&buffer);
     }
@@ -88,6 +93,7 @@ Disco::Disco(const std::string &NDisco, bool usarPorDefecto)
     Sectors = 4;
     CapSection = 1000;
     SectoresPorBloque = 2;
+    bufferConfigured = false;
 
     std::string directorio = fs::current_path().string();
     std::string dirNDisco = directorio + "/" + NDisco;
@@ -138,6 +144,7 @@ Disco::Disco(const std::string &NDisco)
     Name = NDisco;
     Plates = Surfaces = Tracks = Sectors = 0;
     CapSection = 0;
+    bufferConfigured = false;
 
     std::string rutaBase = fs::current_path().string() + "/Discos/" + NDisco;
     if (!fs::exists(rutaBase))
@@ -253,6 +260,7 @@ Disco::Disco(const std::string &NDisco, int NPlates, int NSurfaces, int NTracks,
     Sectors = NSections;
     CapSection = Capacity;
     SectoresPorBloque = NumSectorxBloque;
+    bufferConfigured = false;
 
     std::string directorio = fs::current_path().string();
     std::string dirNDisco = directorio + "/Discos";
@@ -742,7 +750,8 @@ bool Disco::EliminarRegistro(const std::string &nombreTabla, int id)
     bool ok = Blocks.EliminarRegistro(nombreTabla, id);
     if (ok)
     {
-        buffer.flushAll();
+        if (bufferConfigured)
+            buffer.flushAll();
         ReemplazarSectoresDesdeBloques();
     }
     return ok;
@@ -873,21 +882,32 @@ void Disco::MostrarSectoresOcupados()
 
 std::string &Disco::RequestPage(int bloqueId, const std::string &ruta, bool write, bool pinned)
 {
+    if (!bufferConfigured)
+        ConfigureBufferInteractive();
     return buffer.readBlock(bloqueId, ruta, write, pinned);
 }
 
 void Disco::UnpinPage(int bloqueId)
 {
+    if (!bufferConfigured)
+        ConfigureBufferInteractive();
     buffer.unpin(bloqueId);
 }
 
 void Disco::PrintPageTable() const
 {
+    if (!bufferConfigured)
+    {
+        std::cout << "Buffer no inicializado\n";
+        return;
+    }
     buffer.printPageTable();
 }
 
 bool Disco::InsertarRegistroEnBloqueYSector(int bloqueId, const std::string &registro)
 {
+    if (!bufferConfigured)
+        ConfigureBufferInteractive();
     if (!Blocks.InsertarRegistroEnBloque(registro, bloqueId))
         return false;
 
@@ -927,4 +947,22 @@ void Disco::ImprimirBloque(int bloqueId)
     std::cout << "-----------------------------\n";
     std::cout << contenido << "\n";
     std::cout << "-----------------------------\n";
+}
+
+void Disco::ConfigureBufferInteractive()
+{
+    size_t frames;
+    int pol;
+    std::cout << "Numero de frames para el buffer: ";
+    std::cin >> frames;
+    std::cout << "Politica de reemplazo (0=LRU,1=FIFO,2=CLOCK): ";
+    std::cin >> pol;
+    BufferManager::Policy policy = BufferManager::LRU;
+    if (pol == 1)
+        policy = BufferManager::FIFO;
+    else if (pol == 2)
+        policy = BufferManager::CLOCK;
+    buffer = BufferManager(frames, policy);
+    Blocks.SetBufferManager(&buffer);
+    bufferConfigured = true;
 }

@@ -23,6 +23,8 @@ SGBD::SGBD()
                 continue;
             }
             Discos.push_back(Disco(nombreDisco));
+            Disco *A = BuscarDisco(nombreDisco);
+            A->ConfigureBufferInteractive();
         }
     }
 
@@ -59,6 +61,8 @@ void SGBD::Create_Disk()
     std::cin >> NumSectorxBloque;
 
     Discos.push_back(Disco(Name_Disk, NPlates, 2, NTracks, NSections, Capacity, NumSectorxBloque));
+    Disco *A = BuscarDisco(Name_Disk);
+    A->ConfigureBufferInteractive();
 }
 
 void SGBD::Cargar()
