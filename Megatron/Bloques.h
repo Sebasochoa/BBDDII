@@ -14,6 +14,7 @@ private:
     int NumBlocks;
     BufferManager *bufferManager;
     bool EliminarRegistroEnBloque(int bloqueId, int slotIndex);
+    bool BloqueEstaVacio(const std::string &rutaBloque);
 
 public:
     Bloques();
